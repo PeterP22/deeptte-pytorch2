@@ -65,6 +65,21 @@ Chengdu sample test set (1,400 trips), trained 50 epochs (~30 min on an M-series
 
 The model beats the constant-speed baseline by ~6 points of MAPE on ~14k training trips. The paper's ~11% required 5M+ trips; the gap is the data, not the port — train/eval loss diverge after ~epoch 15 (0.07 vs 0.23), the signature of a model starved for data.
 
+## Experiments (Chengdu test set)
+
+All runs: early stopping (patience 8, max 60 epochs), ReduceLROnPlateau, grad clipping, seed 42.
+
+| Run | Flags | MAPE | MAE | RMSE |
+|---|---|---|---|---|
+| phase 1 | fixed 50 epochs, no scheduler | 24.55% | 5.87 min | 7.75 min |
+| **t1-a03** | tier-1 discipline only | **22.51%** | 5.62 min | 7.49 min |
+| t1-a01 | + alpha 0.1 | 23.83% | 5.90 min | 7.85 min |
+| t1-mask | + masked attention | 22.97% | **5.48 min** | **7.33 min** |
+| t1-buckets | + dist buckets (20) | 24.89% | 5.93 min | 7.81 min |
+| t1-geo | + geohash embeddings | 23.52% | 5.67 min | 7.55 min |
+
+Takeaways: training discipline alone bought ~2 points of MAPE. Masked attention is the best (and only clearly positive) architecture tweak — best MAE/RMSE. Distance bucketization *hurt* at this data size (20 buckets × 8 dims has too many parameters for 14k trips and discards resolution the raw scalar kept); geohash embeddings were roughly neutral — both are the kind of feature that needs DeepETA-scale data to pay off. Chengdu at 14k trips asymptotes around 22% MAPE; the next lever is data volume (Porto, below).
+
 ## Roadmap
 
 - [x] Port to Python 3 / PyTorch 2
