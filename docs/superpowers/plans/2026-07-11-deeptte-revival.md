@@ -24,6 +24,8 @@
 4. `time` labels are in **seconds**. Metrics computed in seconds, displayed also in minutes.
 5. `dateID` is parsed into batches (parity with original) but unused by the model.
 6. `states` is the only trajectory key NOT normalized (it feeds an Embedding).
+7. Pooling supports `attention`/`mean` only. The original's docstring mentions `last` but its forward never implemented it (would return `None`) — we raise `ValueError` instead.
+8. Checkpointing writes `last.pt` + `best.pt` (overwriting) rather than the original's timestamped-file-per-epoch — deliberate, avoids disk bloat; `metrics.csv` preserves the history.
 
 ## File structure
 
@@ -231,6 +233,7 @@ DeepETA analogue: this is the feature-encoding stage. DeepTTE feeds raw
 embeds them. Same job — turning a trip into model-ready numbers.
 """
 import json
+from functools import partial
 
 import numpy as np
 import torch
@@ -326,7 +329,8 @@ def get_loader(path, batch_size, config, num_workers=0, seed=None):
     return DataLoader(
         dataset,
         batch_sampler=sampler,
-        collate_fn=lambda b: collate_fn(b, config),
+        # partial (not a lambda) so num_workers>0 can pickle it on macOS
+        collate_fn=partial(collate_fn, config=config),
         num_workers=num_workers,
     )
 ```
@@ -843,7 +847,8 @@ def main():
     parser.add_argument("--kernel-size", type=int, default=3)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--checkpoint-dir", default="checkpoints")
-    parser.add_argument("--metrics-file", default="checkpoints/metrics.csv")
+    parser.add_argument("--metrics-file", default=None,
+                        help="default: <checkpoint-dir>/metrics.csv")
     args = parser.parse_args()
 
     config = Config()
@@ -855,8 +860,8 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
     ckpt_dir = Path(args.checkpoint_dir)
-    ckpt_dir.mkdir(exist_ok=True)
-    metrics_path = Path(args.metrics_file)
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    metrics_path = Path(args.metrics_file) if args.metrics_file else ckpt_dir / "metrics.csv"
     new_file = not metrics_path.exists()
     best_eval = math.inf
 
