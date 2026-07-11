@@ -28,12 +28,11 @@ def to_device(attr, traj, device):
     return attr, traj
 
 
-def run_eval(model, files, config, device, batch_size):
+def run_eval(model, loaders, config, device):
     model.eval()
     total, batches = 0.0, 0
     with torch.no_grad():
-        for name in files:
-            loader = get_loader(Path(config.data_dir) / name, batch_size, config)
+        for loader in loaders:
             for attr, traj in loader:
                 attr, traj = to_device(attr, traj, device)
                 _, loss = model.eval_on_batch(attr, traj, config)
@@ -77,6 +76,13 @@ def main():
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=3)
 
+    # build loaders once — datasets stay parsed in memory across epochs, and
+    # re-iterating a loader reshuffles via the sampler anyway
+    train_loaders = [(name, get_loader(Path(config.data_dir) / name, args.batch_size, config))
+                     for name in config.train_files]
+    eval_loaders = [get_loader(Path(config.data_dir) / name, args.batch_size, config)
+                    for name in config.eval_files]
+
     ckpt_dir = Path("checkpoints") / run_name
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     metrics_path = Path(args.metrics_file) if args.metrics_file else ckpt_dir / "metrics.csv"
@@ -92,8 +98,7 @@ def main():
         for epoch in range(1, args.epochs + 1):
             model.train()  # original bug fixed: was stuck in eval() after epoch 1
             total, batches = 0.0, 0
-            for name in config.train_files:
-                loader = get_loader(Path(config.data_dir) / name, args.batch_size, config)
+            for name, loader in train_loaders:
                 for attr, traj in tqdm(loader, desc=f"epoch {epoch} {name}", leave=False):
                     attr, traj = to_device(attr, traj, device)
                     _, loss = model.eval_on_batch(attr, traj, config)
@@ -105,7 +110,7 @@ def main():
                     batches += 1
             train_loss = total / max(batches, 1)
 
-            eval_loss = run_eval(model, config.eval_files, config, device, args.batch_size)
+            eval_loss = run_eval(model, eval_loaders, config, device)
             scheduler.step(eval_loss)
             lr = optimizer.param_groups[0]["lr"]
             print(f"epoch {epoch}: train {train_loss:.4f}  eval {eval_loss:.4f}  lr {lr:.2e}")
