@@ -3,5 +3,8 @@ __pycache__/
 .venv/
 checkpoints/
 results/
+data/porto/
+*.zip
+train.csv
 .pytest_cache/
 dist/
