@@ -59,10 +59,14 @@ def main():
     parser.add_argument("--checkpoint", default="checkpoints/best.pt")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--device", default="auto")
-    parser.add_argument("--results-file", default="results/predictions.txt")
+    parser.add_argument("--dataset", default="chengdu")
+    parser.add_argument("--results-file", default=None,
+                        help="default: results/<dataset>-predictions.txt")
     args = parser.parse_args()
+    if args.results_file is None:
+        args.results_file = f"results/{args.dataset}-predictions.txt"
 
-    config = Config()
+    config = Config.for_dataset(args.dataset)
     device = pick_device(args.device)
     model = DeepTTE.from_checkpoint(args.checkpoint).to(device)
     model.eval()

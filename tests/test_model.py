@@ -82,6 +82,41 @@ def test_net_eval_mode_returns_predictions():
     assert (pred_dict["label"] > 0).all()  # unnormalized seconds
 
 
+def test_attr_dist_buckets_out_size():
+    from deeptte.models.attr import Attr
+    attr, _ = small_batch()
+    net = Attr(dist_buckets=20)
+    assert net.out_size() == 16 + 3 + 8 + 8  # embedding replaces raw scalar
+    assert net(attr, CFG).shape == (4, net.out_size())
+
+
+def test_attr_geohash_out_size():
+    from deeptte.models.attr import Attr
+    attr, _ = small_batch()
+    net = Attr(geohash=True)
+    assert net.out_size() == 28 + 32
+    assert net(attr, CFG).shape == (4, net.out_size())
+
+
+def test_masked_attention_shapes_and_normalization():
+    from deeptte.models.attr import Attr
+    from deeptte.models.spatio_temporal import SpatioTemporal
+    attr, traj = small_batch()
+    attr_net = Attr()
+    st = SpatioTemporal(attr_size=attr_net.out_size(), masked_attention=True)
+    _, _, pooled = st(traj, attr_net(attr, CFG), CFG)
+    assert pooled.shape == (4, 128)
+    assert torch.isfinite(pooled).all()
+
+
+def test_net_flags_checkpoint_roundtrip(tmp_path):
+    from deeptte.models.net import DeepTTE
+    model = DeepTTE(masked_attention=True, dist_buckets=20, geohash=True)
+    model.save_checkpoint(tmp_path / "c.pt")
+    loaded = DeepTTE.from_checkpoint(tmp_path / "c.pt")
+    assert loaded.hparams["dist_buckets"] == 20
+
+
 def test_checkpoint_roundtrip(tmp_path):
     from deeptte.models.net import DeepTTE
     model = DeepTTE(kernel_size=3, num_filter=32, alpha=0.3)

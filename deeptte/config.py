@@ -40,3 +40,22 @@ class Config:
     def unnormalize(self, x, key: str):
         mean, std = self.stats[key]
         return x * std + mean
+
+    @classmethod
+    def for_dataset(cls, name: str) -> "Config":
+        """Chengdu is built in; other datasets read stats.json written by
+        their prepare script. Paths are relative to the repo root."""
+        if name == "chengdu":
+            return cls()
+        if name == "porto":
+            import json
+            from pathlib import Path
+            meta = json.loads((Path("data/porto") / "stats.json").read_text())
+            return cls(
+                data_dir="data/porto",
+                train_files=tuple(meta["train_files"]),
+                eval_files=tuple(meta["eval_files"]),
+                test_files=tuple(meta["test_files"]),
+                stats={k: tuple(v) for k, v in meta["stats"].items()},
+            )
+        raise ValueError(f"unknown dataset: {name}")

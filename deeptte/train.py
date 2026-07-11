@@ -51,24 +51,38 @@ def main():
     parser.add_argument("--pooling", choices=["attention", "mean"], default="attention")
     parser.add_argument("--kernel-size", type=int, default=3)
     parser.add_argument("--device", default="auto")
-    parser.add_argument("--checkpoint-dir", default="checkpoints")
+    parser.add_argument("--dataset", default="chengdu")
+    parser.add_argument("--run-name", default=None,
+                        help="checkpoints go to checkpoints/<run-name>/ (default: dataset)")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--patience", type=int, default=8,
+                        help="stop after this many epochs without eval improvement")
+    parser.add_argument("--clip-norm", type=float, default=1.0)
+    parser.add_argument("--masked-attention", action="store_true")
+    parser.add_argument("--dist-buckets", type=int, default=0)
+    parser.add_argument("--geohash", action="store_true")
     parser.add_argument("--metrics-file", default=None,
                         help="default: <checkpoint-dir>/metrics.csv")
     args = parser.parse_args()
 
-    config = Config()
+    torch.manual_seed(args.seed)
+    config = Config.for_dataset(args.dataset)
     device = pick_device(args.device)
-    print(f"training on {device}")
+    run_name = args.run_name or args.dataset
+    print(f"run {run_name}: training on {device}")
 
     model = DeepTTE(kernel_size=args.kernel_size, pooling_method=args.pooling,
-                    alpha=args.alpha).to(device)
+                    alpha=args.alpha, masked_attention=args.masked_attention,
+                    dist_buckets=args.dist_buckets, geohash=args.geohash).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=3)
 
-    ckpt_dir = Path(args.checkpoint_dir)
+    ckpt_dir = Path("checkpoints") / run_name
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     metrics_path = Path(args.metrics_file) if args.metrics_file else ckpt_dir / "metrics.csv"
     new_file = not metrics_path.exists()
     best_eval = math.inf
+    epochs_since_best = 0
 
     with open(metrics_path, "a", newline="") as mf:
         writer = csv.writer(mf)
@@ -85,21 +99,31 @@ def main():
                     _, loss = model.eval_on_batch(attr, traj, config)
                     optimizer.zero_grad()
                     loss.backward()
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_norm)
                     optimizer.step()
                     total += loss.item()
                     batches += 1
             train_loss = total / max(batches, 1)
 
             eval_loss = run_eval(model, config.eval_files, config, device, args.batch_size)
-            print(f"epoch {epoch}: train {train_loss:.4f}  eval {eval_loss:.4f}")
+            scheduler.step(eval_loss)
+            lr = optimizer.param_groups[0]["lr"]
+            print(f"epoch {epoch}: train {train_loss:.4f}  eval {eval_loss:.4f}  lr {lr:.2e}")
             writer.writerow([epoch, f"{train_loss:.6f}", f"{eval_loss:.6f}"])
             mf.flush()
 
             model.save_checkpoint(ckpt_dir / "last.pt")
             if eval_loss < best_eval:
                 best_eval = eval_loss
+                epochs_since_best = 0
                 model.save_checkpoint(ckpt_dir / "best.pt")
                 print(f"  new best (eval {eval_loss:.4f}) -> {ckpt_dir / 'best.pt'}")
+            else:
+                epochs_since_best += 1
+                if epochs_since_best > args.patience:
+                    print(f"early stop: no eval improvement in {args.patience} epochs "
+                          f"(best {best_eval:.4f})")
+                    break
 
 
 if __name__ == "__main__":

@@ -19,3 +19,13 @@ def test_splits_match_original():
 def test_time_stats_are_seconds_scale():
     cfg = Config()
     assert 1000 < cfg.mean("time") < 2000  # ~26 min in seconds
+
+
+def test_for_dataset_chengdu_is_default():
+    assert Config.for_dataset("chengdu") == Config()
+
+
+def test_for_dataset_unknown_raises():
+    import pytest
+    with pytest.raises(ValueError):
+        Config.for_dataset("nyc")

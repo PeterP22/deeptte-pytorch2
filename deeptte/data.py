@@ -7,6 +7,7 @@ DeepETA analogue: this is the feature-encoding stage. DeepTTE feeds raw
 embeds them. Same job — turning a trip into model-ready numbers.
 """
 import json
+import math
 from functools import partial
 
 import numpy as np
@@ -16,6 +17,20 @@ from torch.utils.data import DataLoader, Dataset, Sampler
 STAT_KEYS = ("dist", "time")
 INFO_KEYS = ("driverID", "dateID", "weekID", "timeID")
 TRAJ_KEYS = ("lngs", "lats", "states", "time_gap", "dist_gap")
+
+GEO_VOCAB = 16384
+GEO_RESOLUTIONS = (("fine", 0.01), ("coarse", 0.05))  # degrees: ~1 km / ~5 km
+
+
+def _cell(lng, lat, res):
+    """Deterministic spatial-hash bucket for a grid cell.
+
+    math.floor (not int()) so cells are stable across the sign boundary —
+    Porto longitudes are negative. DeepETA analogue: multi-resolution geohash
+    embeddings with independent hash functions.
+    """
+    x, y = math.floor(lng / res), math.floor(lat / res)
+    return (x * 73856093 ^ y * 19349663) % GEO_VOCAB
 
 
 class TripDataset(Dataset):
@@ -57,6 +72,15 @@ def collate_fn(batch, config):
         attr[key] = config.normalize(x, key)
     for key in INFO_KEYS:
         attr[key] = torch.tensor([item[key] for item in batch], dtype=torch.long)
+
+    # origin/destination grid cells (raw coords, before normalization); the
+    # model only embeds these when geohash is enabled
+    for end, idx in (("o", 0), ("d", -1)):
+        for suffix, res in GEO_RESOLUTIONS:
+            attr[f"{end}_cell_{suffix}"] = torch.tensor(
+                [_cell(item["lngs"][idx], item["lats"][idx], res) for item in batch],
+                dtype=torch.long,
+            )
 
     mask = np.arange(lens.max()) < lens[:, None]
     for key in TRAJ_KEYS:

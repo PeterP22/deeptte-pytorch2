@@ -43,3 +43,17 @@ def test_loader_yields_batches():
     loader = get_loader(DATA, batch_size=8, config=CFG)
     attr, traj = next(iter(loader))
     assert attr["time"].shape[0] == 8
+
+
+def test_collate_emits_geo_cells():
+    ds = TripDataset(DATA, CFG)
+    attr, _ = collate_fn([ds[i] for i in range(4)], CFG)
+    for key in ("o_cell_fine", "o_cell_coarse", "d_cell_fine", "d_cell_coarse"):
+        assert attr[key].dtype == torch.long
+        assert (attr[key] >= 0).all() and (attr[key] < 16384).all()
+
+
+def test_cell_hash_deterministic_and_floors_negatives():
+    from deeptte.data import _cell
+    assert _cell(-8.61, 41.14, 0.01) == _cell(-8.61, 41.14, 0.01)
+    assert _cell(-0.001, 0.001, 0.01) != _cell(0.001, 0.001, 0.01)  # floor, not truncate

@@ -71,22 +71,26 @@ class LocalEstimator(nn.Module):
 
 class DeepTTE(nn.Module):
     def __init__(self, kernel_size=3, num_filter=32, pooling_method="attention",
-                 num_final_fcs=3, final_fc_size=128, alpha=0.3):
+                 num_final_fcs=3, final_fc_size=128, alpha=0.3,
+                 masked_attention=False, dist_buckets=0, geohash=False):
         super().__init__()
         self.hparams = dict(
             kernel_size=kernel_size, num_filter=num_filter,
             pooling_method=pooling_method, num_final_fcs=num_final_fcs,
             final_fc_size=final_fc_size, alpha=alpha,
+            masked_attention=masked_attention, dist_buckets=dist_buckets,
+            geohash=geohash,
         )
         self.kernel_size = kernel_size
         self.alpha = alpha
 
-        self.attr_net = Attr()
+        self.attr_net = Attr(dist_buckets=dist_buckets, geohash=geohash)
         self.spatio_temporal = SpatioTemporal(
             attr_size=self.attr_net.out_size(),
             kernel_size=kernel_size,
             num_filter=num_filter,
             pooling_method=pooling_method,
+            masked_attention=masked_attention,
         )
         self.entire_estimate = EntireEstimator(
             input_size=SpatioTemporal.out_size() + self.attr_net.out_size(),

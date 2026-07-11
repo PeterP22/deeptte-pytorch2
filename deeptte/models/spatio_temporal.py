@@ -15,12 +15,14 @@ from .geo_conv import GeoConv
 
 
 class SpatioTemporal(nn.Module):
-    def __init__(self, attr_size, kernel_size=3, num_filter=32, pooling_method="attention"):
+    def __init__(self, attr_size, kernel_size=3, num_filter=32, pooling_method="attention",
+                 masked_attention=False):
         super().__init__()
         if pooling_method not in ("attention", "mean"):
             raise ValueError(f"unsupported pooling_method: {pooling_method}")
         self.kernel_size = kernel_size
         self.pooling_method = pooling_method
+        self.masked_attention = masked_attention
         self.geo_conv = GeoConv(kernel_size=kernel_size, num_filter=num_filter)
         self.rnn = nn.LSTM(
             input_size=num_filter + 1 + attr_size,
@@ -41,11 +43,15 @@ class SpatioTemporal(nn.Module):
         lens = lens.to(summed).unsqueeze(1)
         return summed / lens
 
-    def attent_pooling(self, hiddens, attr_t):
+    def attent_pooling(self, hiddens, attr_t, lens):
         # attr_t arrives already unsqueezed to (B, 1, attr_size)
         attent = torch.tanh(self.attr2atten(attr_t)).permute(0, 2, 1)  # B x 128 x 1
         alpha = torch.exp(-torch.bmm(hiddens, attent))  # B x T x 1
-        # Quirk preserved from the original: no explicit padding mask. Padded
+        if self.masked_attention:
+            mask = (torch.arange(hiddens.size(1), device=hiddens.device)[None, :, None]
+                    < lens.to(hiddens.device)[:, None, None])
+            alpha = alpha * mask
+        # else: quirk preserved from the original — no padding mask. Padded
         # hiddens are 0 so exp(-0)=1 leaks some weight into the denominator.
         alpha = alpha / torch.sum(alpha, dim=1, keepdim=True)
         return torch.bmm(hiddens.permute(0, 2, 1), alpha).squeeze(2)
@@ -69,4 +75,4 @@ class SpatioTemporal(nn.Module):
 
         if self.pooling_method == "mean":
             return packed_hiddens, lens, self.mean_pooling(hiddens, out_lens)
-        return packed_hiddens, lens, self.attent_pooling(hiddens, attr_t)
+        return packed_hiddens, lens, self.attent_pooling(hiddens, attr_t, out_lens)
