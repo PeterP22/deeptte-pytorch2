@@ -29,7 +29,7 @@ scheduler.step(eval_loss)
 # early stopping: track epochs_since_best; break when > args.patience, print why
 ```
 
-- [ ] **Step 4:** Pass new model flags through to `DeepTTE(...)`: `--masked-attention` (store_true), `--dist-buckets` (int, default 0), `--geohash` (store_true).
+- [ ] **Step 4:** Add the CLI args `--masked-attention` (store_true), `--dist-buckets` (int, default 0), `--geohash` (store_true) — but thread them into `DeepTTE(...)` only in Task 2 Step 6 (the constructor doesn't accept them yet; implement Tasks 1–3 before running the CLI).
 - [ ] **Step 5:** `uv run pytest -q` still green. Commit `feat: tier-1 training discipline (early stop, plateau LR, clipping, runs)`.
 
 ### Task 2: Tier 2 — model flags (TDD)
@@ -106,7 +106,7 @@ for end, idx in (("o", 0), ("d", -1)):
         )
 ```
 
-- [ ] **Step 4:** `attr.py`: constructor flags. `dist_buckets`: `register_buffer("dist_edges", torch.linspace(-2.5, 2.5, dist_buckets - 1))`, `nn.Embedding(dist_buckets, 8)`; forward does `torch.bucketize(config.normalize(attr["dist"], "dist"), self.dist_edges)` → embed (replaces the raw scalar and its double-normalization quirk when enabled). `geohash`: four `nn.Embedding(GEO_VOCAB, 8)` for the cell keys. `out_size()` becomes an instance method reflecting flags.
+- [ ] **Step 4:** `attr.py`: constructor flags. `dist_buckets`: `register_buffer("dist_edges", torch.linspace(-2.5, 2.5, dist_buckets - 1))`, `nn.Embedding(dist_buckets, 8)`; forward does `torch.bucketize(attr["dist"], self.dist_edges)` → embed. **`attr["dist"]` arrives already normalized from the collate — do NOT normalize again** (re-normalizing would shift all trips into z ≈ [-2.9, -1.8], cramming the dataset into ~5 of 20 buckets). Enabling buckets thus also drops the double-normalization quirk. `geohash`: four `nn.Embedding(GEO_VOCAB, 8)` for the cell keys. `out_size()` becomes an instance method reflecting flags.
 - [ ] **Step 5:** `spatio_temporal.py`: `masked_attention` flag; `attent_pooling(hiddens, attr_t, lens)`:
 
 ```python
@@ -116,7 +116,7 @@ if self.masked_attention:
     alpha = alpha * mask
 ```
 
-(`lens` = out_lens tensor from pad_packed_sequence; pass it in from forward.)
+(`lens` = out_lens tensor from pad_packed_sequence; pass it in from forward. The mask multiply goes BETWEEN the `torch.exp` line and the sum-normalization — after normalization it does nothing.)
 - [ ] **Step 6:** `net.py`: thread flags through `DeepTTE.__init__` into hparams + submodules. `entire_estimate` input size uses `self.attr_net.out_size()` (already instance-based after Step 4).
 - [ ] **Step 7:** Full suite green. Commit `feat: tier-2 flags (masked attention, dist buckets, geohash embeddings)`.
 
@@ -196,6 +196,10 @@ Usage: uv run python scripts/porto_prepare.py --csv train.csv --out data/porto \
 ```
 
 **Important semantic check before writing stats:** in Chengdu data, `dist_gap`/`time_gap` are CUMULATIVE sequences, but the normalization stats correspond to per-point deltas (time_gap_mean 43.9 s ≈ one sampling interval, not a cumulative mean). Porto must match: store cumulative sequences in the JSONL, compute `dist_gap`/`time_gap` stats over successive DELTAS.
+
+**Zero-std guard (blocking bug otherwise):** Porto deltas for `time_gap` are exactly 15.0 for every point, so the delta std is 0.0 → division by zero in collate normalization AND `(k-1)*std("time_gap")` = 0 in the local-label math → NaN loss from the first batch. The prepare script must floor every stored std at 1.0 (`std = max(std, 1.0)`) with a comment explaining the Porto time-sampling cause. Sanity check in Step 3: assert no stored std is 0.
+
+**Timezone:** derive `weekID`/`timeID`/`dateID` with `datetime.fromtimestamp(ts, tz=timezone.utc)` — machine-local time would make the prepared dataset irreproducible.
 - [ ] **Step 2:** Download the zip (~500 MB) in the background; while it downloads, dry-run the script logic on a hand-made 5-line CSV fixture in the scratchpad to verify parsing/filtering/stats.
 - [ ] **Step 3:** Run the full prepare; sanity-check output (`wc -l data/porto/*`, one JSON line eyeballed, stats.json plausible: time_gap delta mean == 15.0 exactly).
 - [ ] **Step 4:** Smoke: `uv run python -m deeptte.train --dataset porto --epochs 1 --run-name porto-smoke` runs one epoch cleanly.
