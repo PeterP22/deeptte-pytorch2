@@ -55,13 +55,15 @@ The paper's ~11% MAPE used the full 5M+ trip dataset; with the ~18k-trip sample,
 
 ## Results
 
-*Training in progress — results will be recorded here.*
+Chengdu sample test set (1,400 trips), trained 50 epochs (~30 min on an M-series Mac, MPS). Best checkpoint by eval loss: epoch 39.
 
 | Model | MAPE | MAE | RMSE |
 |---|---|---|---|
-| baseline: mean time | — | — | — |
-| baseline: const speed | — | — | — |
-| DeepTTE (this port) | — | — | — |
+| baseline: mean time | 46.23% | 8.77 min | 10.78 min |
+| baseline: const speed | 30.69% | 6.90 min | 9.30 min |
+| **DeepTTE (this port)** | **24.55%** | **5.87 min** | **7.75 min** |
+
+The model beats the constant-speed baseline by ~6 points of MAPE on ~14k training trips. The paper's ~11% required 5M+ trips; the gap is the data, not the port — train/eval loss diverge after ~epoch 15 (0.07 vs 0.23), the signature of a model starved for data.
 
 ## Roadmap
 
