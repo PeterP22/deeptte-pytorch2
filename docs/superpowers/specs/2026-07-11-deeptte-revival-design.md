@@ -10,7 +10,7 @@ Revive [UrbComp/DeepTTE](https://github.com/UrbComp/DeepTTE) — the code for th
 Goals, in order:
 
 1. **Port** the model to Python 3.12 + PyTorch 2.x, restructured as a modern package, with the architecture preserved exactly.
-2. **Train** it locally (Apple Silicon Mac) on the 3,600 Chengdu taxi trips bundled with the original repo.
+2. **Train** it locally (Apple Silicon Mac) on the Chengdu taxi trips bundled with the original repo: 5 train files × 3,600 trips (~18,000 total) plus a 1,400-trip test file.
 3. **Evaluate** it with real metrics (MAPE / MAE / RMSE) on the bundled test set.
 4. **Annotate** every module with docstrings that explain what it does and which Uber DeepETA concept it maps to — this is the learning layer.
 
@@ -50,16 +50,17 @@ deeptte-pytorch2/
 ## Model (architecture preserved 1:1)
 
 - **Attr** — embeddings for `driverID`, `weekID`, `timeID` + normalized `dist`; concatenated attribute vector.
-- **GeoConv** — 1D conv (kernel size 3) over the GPS point sequence (lng, lat mapped through a small nonlinearity), concatenated with local `dist_gap`; produces per-location features.
-- **SpatioTemporal** — LSTM over Geo-Conv output with attribute vector injected; attention pooling (or mean pooling) over hidden states.
-- **EntireEstimator / LocalEstimator** — residual FC head predicting total trip time; auxiliary head predicting per-segment local times.
-- **Loss** — multi-task: `alpha * local_loss + (1 - alpha) * entire_loss`, both MAPE-style relative losses, with sequence masking for padded batches. Default `alpha = 0.3` as per `run.sh`.
+- **GeoConv** — per point, (lng, lat) is concatenated with a 2-dim embedding of the taxi `state`, mapped through `Linear(4, 16)` + tanh, then a 1D conv (kernel size 3) over the sequence; output concatenated with local `dist_gap`. Produces per-location features.
+- **SpatioTemporal** — LSTM over Geo-Conv output with attribute vector injected; pooling over hidden states supports `attention` / `mean` / `last`, with `attention` as the default (matching the original constructor default and run example).
+- **EntireEstimator / LocalEstimator** — residual FC head predicting total trip time; auxiliary head predicting per-segment local times. The local loss divides by `label + EPS` with `EPS = 10`; the entire loss has no epsilon — preserve both exactly.
+- **Loss** — multi-task: `alpha * local_loss + (1 - alpha) * entire_loss`, both MAPE-style relative losses, with sequence masking for padded batches. Default `alpha = 0.3` (the original `Net.__init__` default; the original run example used 0.1 — both worth trying).
 
 Port rules: `xrange` → `range`, print statements → logging/tqdm, `Variable`/`.data[0]` → plain tensors/`.item()`, `inspect.getargspec` → explicit kwargs, deprecated init calls → current `torch.nn.init`. Behavior-changing "improvements" to the architecture are out of scope.
 
 ## Data pipeline
 
-- JSON-lines files, one trip per line, keys: `driverID`, `dateID`, `weekID`, `timeID`, `dist`, `time` (label, minutes), `lngs`, `lats`, `states`, `time_gap`, `dist_gap`.
+- JSON-lines files, one trip per line, keys: `driverID`, `dateID`, `weekID`, `timeID`, `dist` (km), `time` (label, **seconds** — the original README says minutes but the data and `config.json` means are unambiguously seconds), `lngs`, `lats`, `states`, `time_gap`, `dist_gap`.
+- **Split (adopting the original `config.json`):** train on `train_00`–`train_03`, hold out `train_04` as the eval set (drives `best.pt` selection), and reserve `test` for final metrics only.
 - `torch.utils.data.Dataset` per file + custom `collate_fn` that sorts by length, pads sequences, and returns attr dict + traj dict + lengths mask (same semantics as the original `utils.pad_sequence`).
 - Normalization constants (means/stds for dist, time, lngs, lats, gaps) come from `config.py`, seeded with the original `config.json` values.
 
@@ -69,12 +70,12 @@ Port rules: `xrange` → `range`, print statements → logging/tqdm, `Variable`/
 - AdamW, lr 1e-3 (original used Adam 1e-3; AdamW is the one deliberate modernization, noted in README).
 - Checkpoint every epoch to `checkpoints/`, plus `best.pt` tracked by eval loss.
 - tqdm progress; per-epoch train/eval loss appended to `metrics.csv` for plotting.
-- Defaults mirror `run.sh`: batch 128 (adjusted for local memory as needed), 100 epochs max — but expect useful results in far fewer on 3,600 trips; early stopping is a manual decision, not automated (YAGNI).
+- Chosen defaults: batch 64 (the original `main.py` default; the run example used 10, which is needlessly slow on modern hardware), up to 100 epochs — but expect useful results in far fewer on ~14,400 training trips; early stopping is a manual decision, not automated (YAGNI).
 
 ## Evaluation
 
-- `deeptte.evaluate --checkpoint <path>`: runs the test file, reports **MAPE, MAE (minutes), RMSE (minutes)**, writes per-trip `(label, prediction)` pairs to a results file.
-- Context for expectations, recorded in README: the paper reports ~11% MAPE trained on 5M+ trips; on 3,600 samples we expect materially worse. The gap is itself a documented learning point (data volume matters).
+- `deeptte.evaluate --checkpoint <path>`: runs the test file, reports **MAPE, MAE, RMSE** — computed in seconds (the label unit) and reported in minutes for readability (explicit ÷60 at display time only) — and writes per-trip `(label, prediction)` pairs to a results file.
+- Context for expectations, recorded in README: the paper reports ~11% MAPE trained on 5M+ trips; on ~14,400 training samples we expect materially worse. The gap is itself a documented learning point (data volume matters).
 
 ## Error handling
 
