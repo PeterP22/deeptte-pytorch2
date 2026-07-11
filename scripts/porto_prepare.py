@@ -17,19 +17,13 @@ import csv
 import json
 import sys
 from datetime import datetime, timezone
-from math import asin, cos, radians, sin, sqrt
 from pathlib import Path
 
 import numpy as np
 
+from deeptte.geo import haversine_km
+
 SHARD_SIZE = 25_000
-
-
-def haversine_km(lon1, lat1, lon2, lat2):
-    lon1, lat1, lon2, lat2 = map(radians, (lon1, lat1, lon2, lat2))
-    dlon, dlat = lon2 - lon1, lat2 - lat1
-    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
-    return 2 * asin(sqrt(a)) * 6371
 
 
 def convert_row(row, driver_ids):
