@@ -1,0 +1,10 @@
+data/
+checkpoints/
+results/
+docs/
+tests/
+.venv/
+.pytest_cache/
+__pycache__/
+*.zip
+train.csv
