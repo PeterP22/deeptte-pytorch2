@@ -6,6 +6,7 @@
 <title>DeepTTE dispatch console</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root {
     --bg: #0e0f0c; --panel: #15170f; --panel-2: #1b1e13;
@@ -18,12 +19,12 @@
   body {
     background: var(--bg) repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,.012) 3px 4px);
     color: var(--ink); font-family: var(--mono); font-size: 14px; line-height: 1.55;
-    min-height: 100vh; padding: 28px 20px 60px;
+    min-height: 100vh; padding: 24px 18px 60px;
   }
-  .wrap { max-width: 1080px; margin: 0 auto; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
   header {
     display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
-    border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 22px;
+    border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 18px;
     animation: rise .5s ease both;
   }
   h1 { font-family: var(--disp); font-weight: 800; font-size: 26px; letter-spacing: -0.5px; }
@@ -34,65 +35,64 @@
   .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
   .dot.off { background: var(--bad); }
 
-  .grid { display: grid; grid-template-columns: 5fr 7fr; gap: 18px; }
-  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .grid { display: grid; grid-template-columns: 7fr 5fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
 
   .panel {
     background: var(--panel); border: 1px solid var(--line); border-radius: 2px;
-    padding: 18px; position: relative; animation: rise .5s ease both;
-  }
-  .panel:nth-child(2) { animation-delay: .08s; }
-  .panel::before {
-    content: ""; position: absolute; inset: 6px; pointer-events: none;
-    border: 1px dashed rgba(255,255,255,.05); border-radius: 1px;
+    padding: 16px; position: relative; animation: rise .5s ease both;
   }
   .panel h2 {
     font-family: var(--disp); font-weight: 500; font-size: 12px; letter-spacing: 2.5px;
-    text-transform: uppercase; color: var(--dim); margin-bottom: 14px;
+    text-transform: uppercase; color: var(--dim); margin-bottom: 12px;
   }
-  .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-  .presets button {
+  .hint { font-size: 11px; color: var(--dim); margin-bottom: 10px; }
+  .hint b { color: var(--acc); font-weight: 700; }
+  #map { height: 440px; border: 1px solid var(--line); background: #0a0b08; }
+  .leaflet-container { font-family: var(--mono); }
+  .maprow { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  .maprow button, .presets button {
     font-family: var(--mono); font-size: 12px; padding: 7px 12px; cursor: pointer;
     background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 2px;
-    transition: border-color .15s, transform .1s;
+    transition: border-color .15s;
   }
-  .presets button:hover { border-color: var(--acc); transform: translateY(-1px); }
+  .maprow button:hover, .presets button:hover { border-color: var(--acc); }
+  .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
   .presets button.active { border-color: var(--acc); color: var(--acc); }
-  label { display: block; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); margin: 12px 0 5px; }
-  textarea, input {
-    width: 100%; background: #0a0b08; color: var(--ink); border: 1px solid var(--line);
-    border-radius: 2px; font-family: var(--mono); font-size: 12px; padding: 9px 10px;
-  }
-  textarea { height: 120px; resize: vertical; white-space: pre; }
-  textarea:focus, input:focus { outline: none; border-color: var(--acc); }
-  .row2 { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
-  #send {
-    width: 100%; margin-top: 18px; padding: 13px; cursor: pointer;
-    font-family: var(--disp); font-weight: 800; font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
-    background: var(--acc); color: #14130a; border: none; border-radius: 2px;
-    transition: transform .1s, box-shadow .15s;
-  }
-  #send:hover { transform: translateY(-1px); box-shadow: 0 4px 18px rgba(255,196,0,.25); }
-  #send:disabled { opacity: .55; cursor: wait; transform: none; box-shadow: none; }
+  #routeinfo { font-size: 11px; color: var(--dim); margin-left: auto; }
 
-  .eta-box { text-align: center; padding: 10px 0 16px; border-bottom: 1px dashed var(--line); margin-bottom: 14px; }
+  .eta-box { text-align: center; padding: 4px 0 14px; border-bottom: 1px dashed var(--line); margin-bottom: 12px; }
   .eta-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim); }
-  #eta {
-    font-family: var(--mono); font-weight: 700; font-size: 76px; line-height: 1.05;
-    color: var(--acc); font-variant-numeric: tabular-nums;
-  }
+  #eta { font-family: var(--mono); font-weight: 700; font-size: 68px; line-height: 1.05; color: var(--acc); font-variant-numeric: tabular-nums; }
   #eta.idle { color: var(--line); }
-  .eta-unit { font-size: 16px; color: var(--dim); }
-  .facts { display: flex; justify-content: center; gap: 26px; margin-top: 8px; font-size: 12px; color: var(--dim); flex-wrap: wrap; }
+  .eta-unit { font-size: 15px; color: var(--dim); }
+  .facts { display: flex; justify-content: center; gap: 22px; margin-top: 6px; font-size: 12px; color: var(--dim); flex-wrap: wrap; }
   .facts b { color: var(--ink); font-weight: 700; }
   .facts .hit { color: var(--ok); }
-  #route-wrap { display: flex; justify-content: center; padding: 6px 0 2px; }
-  #route { width: 100%; max-width: 420px; height: auto; }
 
-  .log-head { display: flex; align-items: baseline; justify-content: space-between; }
+  label { display: block; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); margin: 10px 0 5px; }
+  input[type=date], input[type=time] {
+    background: #0a0b08; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 2px; font-family: var(--mono); font-size: 13px; padding: 8px 10px; width: 100%;
+  }
+  input:focus { outline: none; border-color: var(--acc); }
+  .clockrow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  input[type=range] { width: 100%; accent-color: var(--acc); margin-top: 8px; }
+  #depshow { text-align: center; font-size: 13px; color: var(--acc); margin-top: 2px; }
+
+  #sweepbtn {
+    width: 100%; margin-top: 14px; padding: 11px; cursor: pointer;
+    font-family: var(--disp); font-weight: 800; font-size: 13px; letter-spacing: 2px; text-transform: uppercase;
+    background: var(--panel-2); color: var(--acc); border: 1px solid var(--acc); border-radius: 2px;
+  }
+  #sweepbtn:hover { background: rgba(255,196,0,.08); }
+  #sweepbtn:disabled { opacity: .4; cursor: default; }
+  #sweep { width: 100%; height: auto; margin-top: 10px; display: none; }
+
+  .log-head { display: flex; align-items: baseline; justify-content: space-between; margin-top: 14px; }
   #wire {
     background: #0a0b08; border: 1px solid var(--line); border-radius: 2px;
-    padding: 10px 12px; margin-top: 8px; font-size: 11.5px; max-height: 220px; overflow: auto;
+    padding: 9px 11px; margin-top: 6px; font-size: 11px; max-height: 150px; overflow: auto;
     white-space: pre-wrap; word-break: break-all; color: var(--dim);
   }
   #wire .out { color: var(--acc); }
@@ -107,89 +107,76 @@
 <div class="wrap">
   <header>
     <h1>DEEP<span class="tte">TTE</span></h1>
-    <span class="sub">dispatch console — travel-time estimation, Porto model</span>
+    <span class="sub">dispatch console — click a pickup and a destination in Porto</span>
     <span id="status"><span class="dot" id="statdot"></span><span id="stattext">connecting…</span></span>
   </header>
 
   <div class="grid">
     <section class="panel">
-      <h2>Build request</h2>
+      <h2>Route</h2>
       <div class="presets" id="presets"></div>
-      <label for="points">Route points — [[lng, lat], …]</label>
-      <textarea id="points" spellcheck="false"></textarea>
-      <div class="row2">
-        <div>
-          <label for="dep">Departure</label>
-          <input type="datetime-local" id="dep">
-        </div>
-        <div>
-          <label for="drv">Driver id</label>
-          <input type="number" id="drv" value="0" min="0">
-        </div>
+      <div class="hint"><b>Click the map twice</b> — first click sets pickup, second sets destination. The road route is fetched from OSRM, resampled to the model's 200 m grid, and predicted automatically. Click again to start a new trip.</div>
+      <div id="map"></div>
+      <div class="maprow">
+        <button id="clear">Clear route</button>
+        <span id="routeinfo"></span>
       </div>
-      <button id="send">Predict ETA</button>
     </section>
 
-    <section class="panel">
-      <h2>Result</h2>
+    <section class="panel" style="animation-delay:.08s">
+      <h2>Prediction</h2>
       <div class="eta-box">
         <div class="eta-label">Estimated travel time</div>
         <div id="eta" class="idle">--.-</div>
         <div class="eta-unit">minutes</div>
         <div class="facts" id="facts"></div>
       </div>
-      <div id="route-wrap"><svg id="route" viewBox="0 0 420 240"></svg></div>
+
+      <label>Departure — predictions update as you change it</label>
+      <div class="clockrow">
+        <input type="date" id="depdate">
+        <input type="time" id="deptime" step="300">
+      </div>
+      <input type="range" id="depslider" min="0" max="1435" step="5">
+      <div id="depshow"></div>
+
+      <button id="sweepbtn" disabled>Sweep all 24 departure hours</button>
+      <svg id="sweep" viewBox="0 0 420 120"></svg>
+
       <div class="log-head"><h2 style="margin:0">Wire log</h2><span class="sub" id="lat"></span></div>
       <div id="wire">console ready<span class="cursor">_</span></div>
     </section>
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="/presets.js"></script>
 <script>
   const $ = id => document.getElementById(id);
-  let actual = null;
+  const OSRM = "https://router.project-osrm.org/route/v1/driving/";
+  const PORTO = { lng: [-9.0, -8.2], lat: [40.9, 41.4] };
+  let origin = null, dest = null, routePts = null, actual = null;
+  let routeLayer = null, markers = [];
 
-  const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
-  $("dep").value = now.toISOString().slice(0, 16);
+  const map = L.map("map", { zoomControl: true }).setView([41.157, -8.63], 13);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: "&copy; OSM &copy; CARTO", maxZoom: 19,
+  }).addTo(map);
 
-  window.PRESETS.forEach((p, i) => {
-    const b = document.createElement("button");
-    b.textContent = `${p.label} · ${p.dist_km} km`;
-    b.onclick = () => {
-      document.querySelectorAll(".presets button").forEach(x => x.classList.remove("active"));
-      b.classList.add("active");
-      $("points").value = JSON.stringify(p.points);
-      $("drv").value = p.driver_id;
-      actual = p.actual_s;
-      drawRoute(p.points);
-    };
-    $("presets").appendChild(b);
-    if (i === 1) b.click();
-  });
+  const now = new Date();
+  $("depdate").value = now.toISOString().slice(0, 10);
+  setMinutes(now.getHours() * 60 + now.getMinutes());
 
-  $("points").addEventListener("input", () => {
-    actual = null;
-    document.querySelectorAll(".presets button").forEach(x => x.classList.remove("active"));
-    try { drawRoute(JSON.parse($("points").value)); } catch {}
-  });
-
-  function drawRoute(pts) {
-    if (!Array.isArray(pts) || pts.length < 2) return;
-    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
-    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-    const pad = 18, W = 420, H = 240;
-    const sc = Math.min((W - 2 * pad) / (x1 - x0 || 1e-6), (H - 2 * pad) / (y1 - y0 || 1e-6));
-    const ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2;
-    const map = p => [ox + (p[0] - x0) * sc, H - (oy + (p[1] - y0) * sc)];
-    const d = pts.map((p, i) => (i ? "L" : "M") + map(p).map(v => v.toFixed(1)).join(" ")).join("");
-    const [ax, ay] = map(pts[0]), [bx, by] = map(pts[pts.length - 1]);
-    $("route").innerHTML =
-      `<path d="${d}" fill="none" stroke="#ffc400" stroke-width="2" stroke-linejoin="round" opacity=".9"/>` +
-      `<circle cx="${ax}" cy="${ay}" r="5" fill="#0e0f0c" stroke="#7ed957" stroke-width="2"/>` +
-      `<circle cx="${bx}" cy="${by}" r="5" fill="#0e0f0c" stroke="#ff5d45" stroke-width="2"/>` +
-      `<text x="${ax + 9}" y="${ay + 4}" fill="#8f927e" font-size="10" font-family="Space Mono">origin</text>` +
-      `<text x="${bx + 9}" y="${by + 4}" fill="#8f927e" font-size="10" font-family="Space Mono">dest</text>`;
+  function setMinutes(m) {
+    m = Math.round(m / 5) * 5;
+    $("depslider").value = m;
+    $("deptime").value = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    $("depshow").textContent = `departing ${$("deptime").value}`;
+  }
+  function departureISO(minOverride) {
+    const t = minOverride == null ? $("deptime").value
+      : `${String(Math.floor(minOverride / 60)).padStart(2, "0")}:${String(minOverride % 60).padStart(2, "0")}`;
+    return `${$("depdate").value}T${t}:00`;
   }
 
   function log(line, cls) {
@@ -199,9 +186,80 @@
     w.scrollTop = w.scrollHeight;
   }
 
+  const hav = (a, b) => {
+    const R = 6371, r = x => x * Math.PI / 180;
+    const dLa = r(b[1] - a[1]), dLo = r(b[0] - a[0]);
+    const h = Math.sin(dLa / 2) ** 2 + Math.cos(r(a[1])) * Math.cos(r(b[1])) * Math.sin(dLo / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+
+  function resample(coords, step = 0.2) {
+    const cum = [0];
+    for (let i = 1; i < coords.length; i++) cum.push(cum[i - 1] + hav(coords[i - 1], coords[i]));
+    const total = cum[cum.length - 1];
+    let sp = step;
+    if (total / step < 9) sp = total / 9;
+    const out = [];
+    let j = 0;
+    for (let d = 0; d < total; d += sp) {
+      while (cum[j + 1] < d) j++;
+      const k = (d - cum[j]) / (cum[j + 1] - cum[j] || 1e-9);
+      out.push([coords[j][0] + k * (coords[j + 1][0] - coords[j][0]),
+                coords[j][1] + k * (coords[j + 1][1] - coords[j][1])]);
+    }
+    out.push(coords[coords.length - 1]);
+    return { pts: out, km: total };
+  }
+
+  function drawRoute(coords) {
+    if (routeLayer) map.removeLayer(routeLayer);
+    routeLayer = L.polyline(coords.map(p => [p[1], p[0]]), { color: "#ffc400", weight: 3, opacity: .9 }).addTo(map);
+    map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
+  }
+  function mark(lnglat, color) {
+    const m = L.circleMarker([lnglat[1], lnglat[0]], { radius: 7, color, weight: 2.5, fillColor: "#0e0f0c", fillOpacity: 1 }).addTo(map);
+    markers.push(m);
+  }
+  function clearAll() {
+    markers.forEach(m => map.removeLayer(m)); markers = [];
+    if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+    origin = dest = routePts = actual = null;
+    $("sweepbtn").disabled = true; $("sweep").style.display = "none";
+    $("eta").className = "idle"; $("eta").textContent = "--.-";
+    $("facts").innerHTML = ""; $("routeinfo").textContent = "";
+    document.querySelectorAll(".presets button").forEach(x => x.classList.remove("active"));
+  }
+  $("clear").onclick = clearAll;
+
+  map.on("click", async e => {
+    const p = [+e.latlng.lng.toFixed(6), +e.latlng.lat.toFixed(6)];
+    if (!origin || (origin && dest)) { clearAll(); origin = p; mark(p, "#7ed957"); return; }
+    dest = p; mark(p, "#ff5d45");
+    if (p[0] < PORTO.lng[0] || p[0] > PORTO.lng[1] || p[1] < PORTO.lat[0] || p[1] > PORTO.lat[1])
+      log("⚠ point outside Porto — the model was trained on Porto traffic; expect nonsense elsewhere", "in-bad");
+    await fetchRoute();
+  });
+
+  async function fetchRoute() {
+    log(`→ GET OSRM route ${origin.map(v => v.toFixed(3))} → ${dest.map(v => v.toFixed(3))}`, "out");
+    try {
+      const r = await fetch(`${OSRM}${origin.join(",")};${dest.join(",")}?overview=full&geometries=geojson`);
+      const data = await r.json();
+      if (data.code !== "Ok" || !data.routes.length) return log(`✗ OSRM: ${data.code || r.status} — no drivable route`, "in-bad");
+      const coords = data.routes[0].geometry.coordinates;
+      const { pts, km } = resample(coords);
+      routePts = pts;
+      drawRoute(coords);
+      $("routeinfo").textContent = `${km.toFixed(2)} km · ${coords.length} pts from OSRM → ${pts.length} on the 200 m grid`;
+      log(`← OSRM OK: ${km.toFixed(2)} km, resampled to ${pts.length} points`, "in-ok");
+      $("sweepbtn").disabled = false;
+      predict();
+    } catch (e) { log(`✗ OSRM unreachable: ${e.message}`, "in-bad"); }
+  }
+
   function countUp(target) {
     const el = $("eta"); el.classList.remove("idle");
-    const t0 = performance.now(), dur = 600;
+    const t0 = performance.now(), dur = 500;
     (function tick(t) {
       const k = Math.min((t - t0) / dur, 1);
       el.textContent = (target * (1 - Math.pow(1 - k, 3))).toFixed(1);
@@ -209,35 +267,78 @@
     })(t0);
   }
 
-  $("send").onclick = async () => {
-    let pts;
-    try { pts = JSON.parse($("points").value); }
-    catch { return log("✗ route points are not valid JSON", "in-bad"); }
-    const payload = { points: pts, departure_time: $("dep").value, driver_id: +$("drv").value || 0 };
-    const body = JSON.stringify(payload);
-    $("send").disabled = true;
-    log(`→ POST /predict  (${pts.length} points, ${(body.length / 1024).toFixed(1)} KB)`, "out");
+  async function callPredict(minOverride) {
+    const body = JSON.stringify({ points: routePts, departure_time: departureISO(minOverride) });
     const t0 = performance.now();
+    const r = await fetch("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+    const data = await r.json();
+    return { ok: r.ok, ms: performance.now() - t0, data, status: r.status };
+  }
+
+  async function predict() {
+    if (!routePts) return;
+    log(`→ POST /predict  (${routePts.length} points, departing ${$("deptime").value})`, "out");
     try {
-      const r = await fetch("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body });
-      const ms = performance.now() - t0;
-      const data = await r.json();
-      if (!r.ok) {
-        log(`← ${r.status} in ${ms.toFixed(0)} ms  ${JSON.stringify(data.detail)}`, "in-bad");
-      } else {
-        log(`← 200 OK in ${ms.toFixed(0)} ms  ${JSON.stringify(data)}`, "in-ok");
-        $("lat").textContent = `round trip ${ms.toFixed(0)} ms`;
-        countUp(data.eta_minutes);
-        let facts = `<span><b>${data.eta_seconds}</b> s</span><span><b>${data.dist_km}</b> km</span>`;
-        if (actual !== null) {
-          const err = Math.abs(data.eta_seconds - actual) / actual * 100;
-          facts += `<span>actual was <b>${(actual / 60).toFixed(1)} min</b> · <span class="hit">${err.toFixed(1)}% off</span></span>`;
-        }
-        $("facts").innerHTML = facts;
+      const { ok, ms, data, status } = await callPredict();
+      if (!ok) return log(`← ${status}  ${JSON.stringify(data.detail)}`, "in-bad");
+      log(`← 200 OK in ${ms.toFixed(0)} ms  ${JSON.stringify(data)}`, "in-ok");
+      $("lat").textContent = `round trip ${ms.toFixed(0)} ms`;
+      countUp(data.eta_minutes);
+      let facts = `<span><b>${data.eta_seconds}</b> s</span><span><b>${data.dist_km}</b> km</span>`;
+      if (actual !== null) {
+        const err = Math.abs(data.eta_seconds - actual) / actual * 100;
+        facts += `<span>actual was <b>${(actual / 60).toFixed(1)} min</b> · <span class="hit">${err.toFixed(1)}% off</span></span>`;
       }
+      $("facts").innerHTML = facts;
     } catch (e) { log(`✗ network error: ${e.message}`, "in-bad"); }
-    $("send").disabled = false;
+  }
+
+  let deb;
+  const rePredict = () => { clearTimeout(deb); deb = setTimeout(predict, 350); };
+  $("depslider").oninput = e => { setMinutes(+e.target.value); rePredict(); };
+  $("deptime").onchange = e => { const [h, m] = e.target.value.split(":"); setMinutes(+h * 60 + +m); rePredict(); };
+  $("depdate").onchange = rePredict;
+
+  $("sweepbtn").onclick = async () => {
+    if (!routePts) return;
+    $("sweepbtn").disabled = true;
+    log(`→ sweeping 24 departure hours…`, "out");
+    const etas = [];
+    for (let h = 0; h < 24; h++) {
+      const { ok, data } = await callPredict(h * 60 + 30);
+      etas.push(ok ? data.eta_minutes : null);
+    }
+    $("sweepbtn").disabled = false;
+    const vals = etas.filter(v => v !== null);
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    log(`← sweep done: fastest ${lo.toFixed(1)} min, slowest ${hi.toFixed(1)} min`, "in-ok");
+    const W = 420, H = 120, px = h => 28 + h * (W - 46) / 23, py = v => 14 + (H - 42) * (1 - (v - lo) / (hi - lo || 1));
+    const d = etas.map((v, h) => v === null ? "" : `${h && etas[h-1] !== null ? "L" : "M"}${px(h).toFixed(1)} ${py(v).toFixed(1)}`).join("");
+    const curH = Math.floor(+$("depslider").value / 60);
+    $("sweep").innerHTML =
+      `<text x="4" y="18" fill="#8f927e" font-size="9" font-family="Space Mono">${hi.toFixed(1)}m</text>` +
+      `<text x="4" y="${H - 30}" fill="#8f927e" font-size="9" font-family="Space Mono">${lo.toFixed(1)}m</text>` +
+      `<path d="${d}" fill="none" stroke="#ffc400" stroke-width="1.5"/>` +
+      etas.map((v, h) => v === null ? "" : `<circle cx="${px(h)}" cy="${py(v)}" r="${h === curH ? 4 : 1.8}" fill="${h === curH ? "#7ed957" : "#ffc400"}"/>`).join("") +
+      [0, 6, 12, 18, 23].map(h => `<text x="${px(h)}" y="${H - 6}" fill="#8f927e" font-size="9" text-anchor="middle" font-family="Space Mono">${h}h</text>`).join("");
+    $("sweep").style.display = "block";
   };
+
+  window.PRESETS.forEach(p => {
+    const b = document.createElement("button");
+    b.textContent = `${p.label} · ${p.dist_km} km`;
+    b.onclick = () => {
+      clearAll();
+      b.classList.add("active");
+      routePts = p.points; actual = p.actual_s;
+      mark(p.points[0], "#7ed957"); mark(p.points[p.points.length - 1], "#ff5d45");
+      drawRoute(p.points);
+      $("routeinfo").textContent = `${p.dist_km} km · recorded trip (known actual time)`;
+      $("sweepbtn").disabled = false;
+      predict();
+    };
+    $("presets").appendChild(b);
+  });
 
   fetch("/healthz").then(r => r.json()).then(h => {
     $("statdot").className = "dot on";
