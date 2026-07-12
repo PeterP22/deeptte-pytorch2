@@ -23,7 +23,7 @@ from .data import collate_fn
 from .geo import haversine_km
 from .models.net import DeepTTE
 
-MIN_POINTS = 10  # a route-based model needs a route, not just endpoints
+MIN_POINTS = 8  # matches the training data's minimum (porto_prepare MIN_POINTS)
 
 
 class PredictRequest(BaseModel):

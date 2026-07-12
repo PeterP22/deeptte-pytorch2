@@ -54,7 +54,9 @@ def main():
             "driver_id": trip["driverID"],
         }
         r = client.post(f"{args.url}/predict", json=payload)
-        r.raise_for_status()
+        if r.status_code != 200:
+            print(f"trip {i:3d}: rejected ({r.status_code}) — {r.text[:80]}")
+            continue
         eta = r.json()["eta_seconds"]
         preds.append(eta)
         labels.append(trip["time"])
