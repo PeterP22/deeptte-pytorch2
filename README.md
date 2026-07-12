@@ -80,6 +80,22 @@ All runs: early stopping (patience 8, max 60 epochs), ReduceLROnPlateau, grad cl
 
 Takeaways: training discipline alone bought ~2 points of MAPE. Masked attention is the best (and only clearly positive) architecture tweak — best MAE/RMSE. Distance bucketization *hurt* at this data size (20 buckets × 8 dims has too many parameters for 14k trips and discards resolution the raw scalar kept); geohash embeddings were roughly neutral — both are the kind of feature that needs DeepETA-scale data to pay off. Chengdu at 14k trips asymptotes around 22% MAPE; the next lever is data volume (Porto, below).
 
+## Porto (200k trips)
+
+Prepared from the [ECML/PKDD 2015 Porto dataset](https://archive.ics.uci.edu/dataset/339/taxi+service+trajectory+prediction+challenge+ecml+pkdd+2015) via `scripts/porto_prepare.py` (1.7M trips scanned → 200k train / 10k eval / 10k test). Trained with tier-1 discipline + masked attention, alpha 0.3, batch 128, 30 epochs (~2 h on an M-series Mac).
+
+| Model | MAPE | MAE | RMSE |
+|---|---|---|---|
+| baseline: mean time | 53.05% | 5.29 min | 8.33 min |
+| baseline: const speed | 35.74% | 4.91 min | 8.60 min |
+| **DeepTTE (this port)** | **20.55%** | **2.83 min** | **5.47 min** |
+
+14× more data cut the constant-speed-baseline gap from 8 points (Chengdu) to 15 points, and halved MAE. Train/eval losses stayed close (0.14 vs 0.20) — the overfitting that capped Chengdu is gone; the remaining error is genuine traffic unpredictability.
+
+### The label-leakage incident (worth reading)
+
+Porto's raw trajectories are sampled every **15 seconds**, which makes total travel time literally `(n_points − 1) × 15` — a sequence model can "predict" it by counting its input. Our first Porto run hit an impossible 2% eval error before we caught this. The fix (in `porto_prepare.py`): resample every trajectory onto an equal-**distance** grid (200 m spacing), so point count encodes distance (a legitimate input) and per-point time becomes the genuinely unknown target. This is why the original DeepTTE README demands distance-resampled GPS points — and it's a textbook example of why offline metrics that look too good to be true always are.
+
 ## Roadmap
 
 - [x] Port to Python 3 / PyTorch 2
