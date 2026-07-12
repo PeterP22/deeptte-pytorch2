@@ -182,8 +182,16 @@ def main():
 
     stats = compute_stats(train)
     assert all(s[1] > 0 for s in stats.values()), "zero std slipped through"
+    all_lngs = np.concatenate([t["lngs"] for t in train])
+    all_lats = np.concatenate([t["lats"] for t in train])
     meta = {
         "stats": stats,
+        # actual training bounding box — used by serving to refuse
+        # out-of-coverage requests (σ-based bounds get wrecked by GPS glitches)
+        "coverage": {
+            "lng": [float(np.percentile(all_lngs, 0.01)), float(np.percentile(all_lngs, 99.99))],
+            "lat": [float(np.percentile(all_lats, 0.01)), float(np.percentile(all_lats, 99.99))],
+        },
         "train_files": train_files,
         "eval_files": ["eval"],
         "test_files": ["test"],

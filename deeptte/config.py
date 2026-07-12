@@ -26,6 +26,7 @@ class Config:
     eval_files: tuple[str, ...] = ("train_04",)
     test_files: tuple[str, ...] = ("test",)
     stats: dict = field(default_factory=lambda: dict(STATS))
+    coverage: dict | None = None  # {"lng": [lo, hi], "lat": [lo, hi]} training bbox
 
     def mean(self, key: str) -> float:
         return self.stats[key][0]
@@ -57,5 +58,6 @@ class Config:
                 eval_files=tuple(meta["eval_files"]),
                 test_files=tuple(meta["test_files"]),
                 stats={k: tuple(v) for k, v in meta["stats"].items()},
+                coverage=meta.get("coverage"),
             )
         raise ValueError(f"unknown dataset: {name}")

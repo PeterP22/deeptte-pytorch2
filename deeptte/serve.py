@@ -12,11 +12,13 @@ Env vars:
 Run locally:  uv run uvicorn "deeptte.serve:create_app" --factory --port 8000
 """
 import os
+import time
+from collections import defaultdict, deque
 from datetime import datetime
 from pathlib import Path
 
 import torch
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
 
@@ -26,6 +28,8 @@ from .geo import haversine_km
 from .models.net import DeepTTE
 
 MIN_POINTS = 8  # matches the training data's minimum (porto_prepare MIN_POINTS)
+COVERAGE_SIGMA = 30  # points beyond mean ± 30σ of the training coords are out of coverage
+RATE_LIMIT = int(os.environ.get("DEEPTTE_RATE_LIMIT", "30"))  # predictions / minute / IP
 
 
 class PredictRequest(BaseModel):
@@ -77,6 +81,35 @@ def create_app() -> FastAPI:
     model = DeepTTE.from_checkpoint(ckpt_path)
     model.eval()
 
+    # a model only knows the city it was trained on — refuse the rest. Prefer
+    # the training data's actual bounding box (from stats.json), padded a
+    # little; fall back to σ-based bounds for datasets without one.
+    if config.coverage:
+        pad = 0.05  # degrees, ~5 km of slack around the training box
+        lng_lo, lng_hi = config.coverage["lng"][0] - pad, config.coverage["lng"][1] + pad
+        lat_lo, lat_hi = config.coverage["lat"][0] - pad, config.coverage["lat"][1] + pad
+    else:
+        lng_lo = config.mean("lngs") - COVERAGE_SIGMA * config.std("lngs")
+        lng_hi = config.mean("lngs") + COVERAGE_SIGMA * config.std("lngs")
+        lat_lo = config.mean("lats") - COVERAGE_SIGMA * config.std("lats")
+        lat_hi = config.mean("lats") + COVERAGE_SIGMA * config.std("lats")
+
+    hits: dict[str, deque] = defaultdict(deque)
+
+    def check_rate(request: Request):
+        ip = (request.headers.get("x-forwarded-for") or
+              (request.client.host if request.client else "unknown")).split(",")[0].strip()
+        now = time.monotonic()
+        q = hits[ip]
+        while q and now - q[0] > 60:
+            q.popleft()
+        if len(q) >= RATE_LIMIT:
+            raise HTTPException(status_code=429,
+                                detail=f"rate limit: {RATE_LIMIT} predictions/minute per client")
+        q.append(now)
+        if len(hits) > 10_000:  # bound memory under IP churn
+            hits.clear()
+
     app = FastAPI(title="DeepTTE ETA service")
     static = Path(__file__).parent / "static"
 
@@ -91,10 +124,20 @@ def create_app() -> FastAPI:
     @app.get("/healthz")
     def healthz():
         return {"status": "ok", "checkpoint": ckpt_path, "dataset": dataset,
-                "hparams": model.hparams}
+                "hparams": model.hparams,
+                "coverage": {"lng": [round(lng_lo, 3), round(lng_hi, 3)],
+                             "lat": [round(lat_lo, 3), round(lat_hi, 3)]}}
 
     @app.post("/predict")
-    def predict(req: PredictRequest):
+    def predict(req: PredictRequest, request: Request):
+        check_rate(request)
+        for lng, lat in req.points:
+            if not (lng_lo <= lng <= lng_hi and lat_lo <= lat <= lat_hi):
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"point ({lng}, {lat}) is outside model coverage — this model "
+                           f"was trained on {dataset} (lng {lng_lo:.2f}..{lng_hi:.2f}, "
+                           f"lat {lat_lo:.2f}..{lat_hi:.2f})")
         trip = build_trip(req)
         attr, traj = collate_fn([trip], config)
         with torch.no_grad():

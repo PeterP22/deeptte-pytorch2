@@ -65,6 +65,8 @@
   .eta-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim); }
   #eta { font-family: var(--mono); font-weight: 700; font-size: 68px; line-height: 1.05; color: var(--acc); font-variant-numeric: tabular-nums; }
   #eta.idle { color: var(--line); }
+  #eta.fallback { color: var(--dim); }
+  .eta-label.warn { color: var(--bad); }
   .eta-unit { font-size: 15px; color: var(--dim); }
   .facts { display: flex; justify-content: center; gap: 22px; margin-top: 6px; font-size: 12px; color: var(--dim); flex-wrap: wrap; }
   .facts b { color: var(--ink); font-weight: 700; }
@@ -126,7 +128,7 @@
     <section class="panel" style="animation-delay:.08s">
       <h2>Prediction</h2>
       <div class="eta-box">
-        <div class="eta-label">Estimated travel time</div>
+        <div class="eta-label" id="etalabel">Estimated travel time</div>
         <div id="eta" class="idle">--.-</div>
         <div class="eta-unit">minutes</div>
         <div class="facts" id="facts"></div>
@@ -154,9 +156,11 @@
 <script>
   const $ = id => document.getElementById(id);
   const OSRM = "https://router.project-osrm.org/route/v1/driving/";
-  const PORTO = { lng: [-9.0, -8.2], lat: [40.9, 41.4] };
-  let origin = null, dest = null, routePts = null, actual = null;
+  let coverage = { lng: [-9.0, -8.2], lat: [40.9, 41.4] };  // replaced by /healthz
+  let origin = null, dest = null, routePts = null, actual = null, inCoverage = true;
   let routeLayer = null, markers = [];
+  const covered = p => p[0] >= coverage.lng[0] && p[0] <= coverage.lng[1] &&
+                       p[1] >= coverage.lat[0] && p[1] <= coverage.lat[1];
 
   const map = L.map("map", { zoomControl: true }).setView([41.157, -8.63], 13);
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
@@ -235,8 +239,6 @@
     const p = [+e.latlng.lng.toFixed(6), +e.latlng.lat.toFixed(6)];
     if (!origin || (origin && dest)) { clearAll(); origin = p; mark(p, "#7ed957"); return; }
     dest = p; mark(p, "#ff5d45");
-    if (p[0] < PORTO.lng[0] || p[0] > PORTO.lng[1] || p[1] < PORTO.lat[0] || p[1] > PORTO.lat[1])
-      log("⚠ point outside Porto — the model was trained on Porto traffic; expect nonsense elsewhere", "in-bad");
     await fetchRoute();
   });
 
@@ -252,6 +254,23 @@
       drawRoute(coords);
       $("routeinfo").textContent = `${km.toFixed(2)} km · ${coords.length} pts from OSRM → ${pts.length} on the 200 m grid`;
       log(`← OSRM OK: ${km.toFixed(2)} km, resampled to ${pts.length} points`, "in-ok");
+      inCoverage = pts.every(covered);
+      if (!inCoverage) {
+        // the learned model only knows its training city — outside it, show the
+        // routing engine's physics-based estimate instead (Uber's hybrid, in miniature)
+        const mins = data.routes[0].duration / 60;
+        log(`⚠ outside model coverage — showing OSRM's routing-engine estimate, no ML`, "in-bad");
+        $("etalabel").textContent = "Routing engine estimate — outside model coverage, no ML";
+        $("etalabel").classList.add("warn");
+        $("eta").classList.remove("idle"); $("eta").classList.add("fallback");
+        $("eta").textContent = mins.toFixed(1);
+        $("facts").innerHTML = `<span><b>${km.toFixed(2)}</b> km</span><span>learned ETAs available inside the box drawn on the map</span>`;
+        $("sweepbtn").disabled = true;
+        return;
+      }
+      $("etalabel").textContent = "Estimated travel time";
+      $("etalabel").classList.remove("warn");
+      $("eta").classList.remove("fallback");
       $("sweepbtn").disabled = false;
       predict();
     } catch (e) { log(`✗ OSRM unreachable: ${e.message}`, "in-bad"); }
@@ -276,7 +295,7 @@
   }
 
   async function predict() {
-    if (!routePts) return;
+    if (!routePts || !inCoverage) return;
     log(`→ POST /predict  (${routePts.length} points, departing ${$("deptime").value})`, "out");
     try {
       const { ok, ms, data, status } = await callPredict();
@@ -343,6 +362,11 @@
   fetch("/healthz").then(r => r.json()).then(h => {
     $("statdot").className = "dot on";
     $("stattext").textContent = `model online — ${h.dataset} / ${h.checkpoint.split("/").pop()}`;
+    if (h.coverage) {
+      coverage = h.coverage;
+      L.rectangle([[coverage.lat[0], coverage.lng[0]], [coverage.lat[1], coverage.lng[1]]],
+        { color: "#8f927e", weight: 1, dashArray: "6 6", fill: false, interactive: false }).addTo(map);
+    }
   }).catch(() => {
     $("statdot").className = "dot off";
     $("stattext").textContent = "backend unreachable";
