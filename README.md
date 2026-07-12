@@ -6,6 +6,12 @@ All credit for the model design and the bundled Chengdu sample data goes to the 
 
 This is a learning project inspired by **Uber's DeepETA** ([blog](https://www.uber.com/blog/deepeta-how-uber-predicts-arrival-times/), [paper](https://arxiv.org/abs/2206.02127)) — every module's docstring maps it to its DeepETA analogue. DeepTTE is the 2018 research take (learn travel time end-to-end from the GPS trace); DeepETA is the production take (a linear transformer over tabular features that corrects a routing engine). Reading them side by side is the point.
 
+## Live demo
+
+**[deeptte-production.up.railway.app](https://deeptte-production.up.railway.app)** — click a pickup and a destination anywhere in Porto. The road route comes from OSRM, gets resampled to the model's 200 m grid, and the trained network answers in ~0.5 ms of compute. Drag the departure slider to watch the ETA move with time of day, or sweep all 24 hours to see the traffic rhythm the model learned from the data.
+
+![DeepTTE dispatch console — live route prediction on the Porto model](docs/img/console.png)
+
 ## Architecture (unchanged from the paper)
 
 ```
@@ -100,7 +106,7 @@ Porto's raw trajectories are sampled every **15 seconds**, which makes total tra
 
 - [x] Port to Python 3 / PyTorch 2
 - [x] Train + evaluate on the Chengdu sample
-- [ ] Deploy as an inference API (Azure)
+- [x] Deploy as an inference API + map console — live on [Railway](https://deeptte-production.up.railway.app) (chosen over Azure simply because I'm already in the Railway ecosystem)
 - [ ] Results write-up
 
 ## Citation
