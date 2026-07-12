@@ -22,6 +22,14 @@ def real_trip_points(n=30):
     return [[lng, lat] for lng, lat in zip(trip["lngs"][:n], trip["lats"][:n])]
 
 
+def test_demo_page_served(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+    assert "DEEP" in r.text
+    assert client.get("/presets.js").status_code == 200
+
+
 def test_healthz(client):
     r = client.get("/healthz")
     assert r.status_code == 200

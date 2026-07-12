@@ -13,9 +13,11 @@ Run locally:  uv run uvicorn "deeptte.serve:create_app" --factory --port 8000
 """
 import os
 from datetime import datetime
+from pathlib import Path
 
 import torch
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
 
 from .config import Config
@@ -76,6 +78,15 @@ def create_app() -> FastAPI:
     model.eval()
 
     app = FastAPI(title="DeepTTE ETA service")
+    static = Path(__file__).parent / "static"
+
+    @app.get("/", include_in_schema=False)
+    def demo():
+        return FileResponse(static / "index.html")
+
+    @app.get("/presets.js", include_in_schema=False)
+    def presets():
+        return FileResponse(static / "presets.js")
 
     @app.get("/healthz")
     def healthz():
