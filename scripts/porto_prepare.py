@@ -7,10 +7,14 @@ Usage:
     uv run python scripts/porto_prepare.py --csv /path/to/train.csv \
         --out data/porto --max-trips 220000 --eval-trips 10000 --test-trips 10000
 
-Porto trips are sampled every 15 SECONDS (time-sampled), unlike Chengdu's
-distance-resampled points. Consequence: every local window spans exactly
-(kernel_size-1)*15 s, making the auxiliary local task near-trivial — use a
-small --alpha when training on this dataset.
+Porto trips are sampled every 15 SECONDS (time-sampled). Left as-is, that
+LEAKS THE LABEL: total time == (n_points - 1) * 15, so a sequence model can
+"predict" travel time by counting its input points (we measured 2% eval
+loss before catching this). We therefore RESAMPLE every trajectory onto an
+equal-DISTANCE grid (RESAMPLE_KM spacing) — point count then encodes trip
+distance (a legitimate input), and per-point time gaps become the genuinely
+unknown quantity. This is why the original DeepTTE README requires
+distance-resampled GPS points.
 """
 import argparse
 import csv
@@ -24,6 +28,35 @@ import numpy as np
 from deeptte.geo import haversine_km
 
 SHARD_SIZE = 25_000
+RESAMPLE_KM = 0.2   # spatial grid spacing, ~Chengdu's mean point gap
+MIN_POINTS = 8      # after resampling (=> trips >= ~1.4 km)
+
+
+def resample_by_distance(polyline, step_km):
+    """Interpolate a 15s-sampled polyline onto an equal-distance grid.
+
+    Returns (lngs, lats, time_gap, dist_gap) at grid points, or None if the
+    trip is too short. time_gap is linearly interpolated cumulative seconds —
+    the varying quantity the model must learn; dist_gap is the grid itself.
+    """
+    lngs = np.array([p[0] for p in polyline])
+    lats = np.array([p[1] for p in polyline])
+    cum_d = np.zeros(len(polyline))
+    for i in range(1, len(polyline)):
+        cum_d[i] = cum_d[i - 1] + haversine_km(lngs[i - 1], lats[i - 1], lngs[i], lats[i])
+    cum_t = np.arange(len(polyline)) * 15.0
+
+    grid = np.arange(0.0, cum_d[-1], step_km)
+    if len(grid) < MIN_POINTS:
+        return None
+    grid = np.append(grid, cum_d[-1])  # keep the exact destination
+
+    return (
+        np.interp(grid, cum_d, lngs).tolist(),
+        np.interp(grid, cum_d, lats).tolist(),
+        np.interp(grid, cum_d, cum_t).tolist(),
+        grid.tolist(),
+    )
 
 
 def convert_row(row, driver_ids):
@@ -38,9 +71,10 @@ def convert_row(row, driver_ids):
     if not 120 <= time_total <= 7200:
         return None
 
-    dist_gap = [0.0]
-    for (lng1, lat1), (lng2, lat2) in zip(polyline, polyline[1:]):
-        dist_gap.append(dist_gap[-1] + haversine_km(lng1, lat1, lng2, lat2))
+    resampled = resample_by_distance(polyline, RESAMPLE_KM)
+    if resampled is None:
+        return None
+    lngs, lats, time_gap, dist_gap = resampled
     if not 0.5 <= dist_gap[-1] <= 100:
         return None
 
@@ -58,10 +92,10 @@ def convert_row(row, driver_ids):
         "timeID": start.hour * 60 + start.minute,
         "dist": dist_gap[-1],
         "time": time_total,
-        "lngs": [p[0] for p in polyline],
-        "lats": [p[1] for p in polyline],
-        "states": [1.0] * n,
-        "time_gap": [15.0 * i for i in range(n)],
+        "lngs": lngs,
+        "lats": lats,
+        "states": [1.0] * len(lngs),
+        "time_gap": time_gap,
         "dist_gap": dist_gap,
     }
 
@@ -69,9 +103,9 @@ def convert_row(row, driver_ids):
 def compute_stats(trips):
     """Match Chengdu semantics: dist_gap/time_gap stats are over per-point
     DELTAS (the stored sequences are cumulative); lngs/lats over all points;
-    dist/time over trips. Stds are floored at 1.0 — Porto's exact 15 s
-    sampling makes the time_gap delta std 0.0, which would divide-by-zero in
-    normalization and NaN the local-label math."""
+    dist/time over trips. Stds are floored at 1% of |mean| — equal-distance
+    resampling makes dist_gap deltas near-constant, and a raw std of ~0 would
+    divide-by-zero in normalization / NaN the local-label math."""
     lngs = np.concatenate([t["lngs"] for t in trips])
     lats = np.concatenate([t["lats"] for t in trips])
     d_deltas = np.concatenate([np.diff(t["dist_gap"]) for t in trips])
@@ -80,7 +114,8 @@ def compute_stats(trips):
     time = np.array([t["time"] for t in trips])
 
     def ms(x):
-        return [float(np.mean(x)), float(max(np.std(x), 1.0))]
+        mean, std = float(np.mean(x)), float(np.std(x))
+        return [mean, max(std, 0.01 * abs(mean), 1e-6)]
 
     return {
         "lngs": ms(lngs), "lats": ms(lats),
