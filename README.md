@@ -124,3 +124,7 @@ Porto's raw trajectories are sampled every **15 seconds**, which makes total tra
   year={2018}
 }
 ```
+
+## License
+
+The original [UrbComp/DeepTTE](https://github.com/UrbComp/DeepTTE) code ships without a license, so this port deliberately does not add one. Model design and sample data belong to the original authors; please cite the paper above.
