@@ -1,0 +1,64 @@
+run after-masked: training on cpu, torch 2.14.1+cpu, amp none
+epoch 1: train 0.3393  eval 0.4701  lr 1.00e-03  2131 trips/s
+  new best (eval 0.4701) -> checkpoints/after-masked/best.pt
+epoch 2: train 0.2515  eval 0.4496  lr 1.00e-03  2209 trips/s
+  new best (eval 0.4496) -> checkpoints/after-masked/best.pt
+epoch 3: train 0.2583  eval 0.4636  lr 1.00e-03  2195 trips/s
+epoch 4: train 0.2583  eval 0.4477  lr 1.00e-03  2159 trips/s
+  new best (eval 0.4477) -> checkpoints/after-masked/best.pt
+epoch 5: train 0.2425  eval 0.3764  lr 1.00e-03  2174 trips/s
+  new best (eval 0.3764) -> checkpoints/after-masked/best.pt
+epoch 6: train 0.2367  eval 0.3619  lr 1.00e-03  2200 trips/s
+  new best (eval 0.3619) -> checkpoints/after-masked/best.pt
+epoch 7: train 0.2018  eval 0.3460  lr 1.00e-03  2196 trips/s
+  new best (eval 0.3460) -> checkpoints/after-masked/best.pt
+epoch 8: train 0.1935  eval 0.3322  lr 1.00e-03  2202 trips/s
+  new best (eval 0.3322) -> checkpoints/after-masked/best.pt
+epoch 9: train 0.1556  eval 0.2899  lr 1.00e-03  2187 trips/s
+  new best (eval 0.2899) -> checkpoints/after-masked/best.pt
+epoch 10: train 0.1380  eval 0.2913  lr 1.00e-03  2202 trips/s
+epoch 11: train 0.1290  eval 0.3311  lr 1.00e-03  2142 trips/s
+epoch 12: train 0.1246  eval 0.2965  lr 1.00e-03  2189 trips/s
+epoch 13: train 0.1235  eval 0.2558  lr 1.00e-03  2182 trips/s
+  new best (eval 0.2558) -> checkpoints/after-masked/best.pt
+epoch 14: train 0.1146  eval 0.2642  lr 1.00e-03  2192 trips/s
+epoch 15: train 0.1087  eval 0.2642  lr 1.00e-03  2178 trips/s
+epoch 16: train 0.1174  eval 0.2670  lr 1.00e-03  2177 trips/s
+epoch 17: train 0.1043  eval 0.2674  lr 5.00e-04  2187 trips/s
+epoch 18: train 0.0953  eval 0.2257  lr 5.00e-04  2182 trips/s
+  new best (eval 0.2257) -> checkpoints/after-masked/best.pt
+epoch 19: train 0.0860  eval 0.2258  lr 5.00e-04  2188 trips/s
+epoch 20: train 0.0828  eval 0.2256  lr 5.00e-04  2181 trips/s
+  new best (eval 0.2256) -> checkpoints/after-masked/best.pt
+epoch 21: train 0.0781  eval 0.2227  lr 5.00e-04  2200 trips/s
+  new best (eval 0.2227) -> checkpoints/after-masked/best.pt
+epoch 22: train 0.0786  eval 0.2253  lr 5.00e-04  2179 trips/s
+epoch 23: train 0.0754  eval 0.2325  lr 5.00e-04  2168 trips/s
+epoch 24: train 0.0793  eval 0.2250  lr 5.00e-04  2211 trips/s
+epoch 25: train 0.0740  eval 0.2234  lr 2.50e-04  2196 trips/s
+epoch 26: train 0.0741  eval 0.2244  lr 2.50e-04  2201 trips/s
+epoch 27: train 0.0692  eval 0.2247  lr 2.50e-04  2196 trips/s
+epoch 28: train 0.0673  eval 0.2251  lr 2.50e-04  2203 trips/s
+epoch 29: train 0.0659  eval 0.2211  lr 2.50e-04  2203 trips/s
+  new best (eval 0.2211) -> checkpoints/after-masked/best.pt
+epoch 30: train 0.0650  eval 0.2223  lr 2.50e-04  2203 trips/s
+epoch 31: train 0.0645  eval 0.2210  lr 2.50e-04  2198 trips/s
+  new best (eval 0.2210) -> checkpoints/after-masked/best.pt
+epoch 32: train 0.0631  eval 0.2186  lr 2.50e-04  2203 trips/s
+  new best (eval 0.2186) -> checkpoints/after-masked/best.pt
+epoch 33: train 0.0617  eval 0.2211  lr 2.50e-04  2204 trips/s
+epoch 34: train 0.0619  eval 0.2230  lr 2.50e-04  2217 trips/s
+epoch 35: train 0.0597  eval 0.2231  lr 2.50e-04  2213 trips/s
+epoch 36: train 0.0601  eval 0.2198  lr 1.25e-04  2145 trips/s
+epoch 37: train 0.0643  eval 0.2161  lr 1.25e-04  2111 trips/s
+  new best (eval 0.2161) -> checkpoints/after-masked/best.pt
+epoch 38: train 0.0619  eval 0.2162  lr 1.25e-04  2179 trips/s
+epoch 39: train 0.0588  eval 0.2176  lr 1.25e-04  2196 trips/s
+epoch 40: train 0.0570  eval 0.2195  lr 1.25e-04  2173 trips/s
+epoch 41: train 0.0561  eval 0.2183  lr 6.25e-05  2185 trips/s
+epoch 42: train 0.0556  eval 0.2196  lr 6.25e-05  2171 trips/s
+epoch 43: train 0.0548  eval 0.2202  lr 6.25e-05  2181 trips/s
+epoch 44: train 0.0538  eval 0.2167  lr 6.25e-05  2179 trips/s
+epoch 45: train 0.0531  eval 0.2170  lr 3.13e-05  2167 trips/s
+epoch 46: train 0.0564  eval 0.2180  lr 3.13e-05  2162 trips/s
+early stop: no eval improvement in 8 epochs (best 0.2161)

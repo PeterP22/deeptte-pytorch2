@@ -1,0 +1,67 @@
+run after: training on cpu, torch 2.14.1+cpu, amp none
+epoch 1: train 0.3256  eval 0.6303  lr 1.00e-03  1635 trips/s
+  new best (eval 0.6303) -> checkpoints/after/best.pt
+epoch 2: train 0.2860  eval 0.4235  lr 1.00e-03  1670 trips/s
+  new best (eval 0.4235) -> checkpoints/after/best.pt
+epoch 3: train 0.2533  eval 0.3849  lr 1.00e-03  1660 trips/s
+  new best (eval 0.3849) -> checkpoints/after/best.pt
+epoch 4: train 0.2434  eval 0.3625  lr 1.00e-03  1652 trips/s
+  new best (eval 0.3625) -> checkpoints/after/best.pt
+epoch 5: train 0.2496  eval 0.3645  lr 1.00e-03  1648 trips/s
+epoch 6: train 0.2375  eval 0.3452  lr 1.00e-03  1640 trips/s
+  new best (eval 0.3452) -> checkpoints/after/best.pt
+epoch 7: train 0.2128  eval 0.3433  lr 1.00e-03  1647 trips/s
+  new best (eval 0.3433) -> checkpoints/after/best.pt
+epoch 8: train 0.1874  eval 0.3195  lr 1.00e-03  1660 trips/s
+  new best (eval 0.3195) -> checkpoints/after/best.pt
+epoch 9: train 0.1654  eval 0.2798  lr 1.00e-03  1673 trips/s
+  new best (eval 0.2798) -> checkpoints/after/best.pt
+epoch 10: train 0.1493  eval 0.2547  lr 1.00e-03  1669 trips/s
+  new best (eval 0.2547) -> checkpoints/after/best.pt
+epoch 11: train 0.1363  eval 0.2610  lr 1.00e-03  1669 trips/s
+epoch 12: train 0.1325  eval 0.2916  lr 1.00e-03  1671 trips/s
+epoch 13: train 0.1290  eval 0.2996  lr 1.00e-03  1675 trips/s
+epoch 14: train 0.1211  eval 0.3179  lr 5.00e-04  1675 trips/s
+epoch 15: train 0.1180  eval 0.2411  lr 5.00e-04  1666 trips/s
+  new best (eval 0.2411) -> checkpoints/after/best.pt
+epoch 16: train 0.1048  eval 0.2241  lr 5.00e-04  1638 trips/s
+  new best (eval 0.2241) -> checkpoints/after/best.pt
+epoch 17: train 0.0969  eval 0.2280  lr 5.00e-04  1677 trips/s
+epoch 18: train 0.0922  eval 0.2251  lr 5.00e-04  1640 trips/s
+epoch 19: train 0.0922  eval 0.2191  lr 5.00e-04  1618 trips/s
+  new best (eval 0.2191) -> checkpoints/after/best.pt
+epoch 20: train 0.0934  eval 0.2226  lr 5.00e-04  1639 trips/s
+epoch 21: train 0.0850  eval 0.2277  lr 5.00e-04  1632 trips/s
+epoch 22: train 0.0814  eval 0.2234  lr 5.00e-04  1634 trips/s
+epoch 23: train 0.0827  eval 0.2252  lr 2.50e-04  1628 trips/s
+epoch 24: train 0.0775  eval 0.2215  lr 2.50e-04  1634 trips/s
+epoch 25: train 0.0745  eval 0.2205  lr 2.50e-04  1608 trips/s
+epoch 26: train 0.0725  eval 0.2209  lr 2.50e-04  1607 trips/s
+epoch 27: train 0.0722  eval 0.2214  lr 1.25e-04  1609 trips/s
+epoch 28: train 0.0741  eval 0.2189  lr 1.25e-04  1613 trips/s
+  new best (eval 0.2189) -> checkpoints/after/best.pt
+epoch 29: train 0.0710  eval 0.2197  lr 1.25e-04  1615 trips/s
+epoch 30: train 0.0696  eval 0.2205  lr 1.25e-04  1616 trips/s
+epoch 31: train 0.0672  eval 0.2194  lr 1.25e-04  1630 trips/s
+epoch 32: train 0.0664  eval 0.2191  lr 6.25e-05  1633 trips/s
+epoch 33: train 0.0669  eval 0.2196  lr 6.25e-05  1650 trips/s
+epoch 34: train 0.0653  eval 0.2183  lr 6.25e-05  1648 trips/s
+  new best (eval 0.2183) -> checkpoints/after/best.pt
+epoch 35: train 0.0642  eval 0.2197  lr 6.25e-05  1642 trips/s
+epoch 36: train 0.0636  eval 0.2186  lr 6.25e-05  1638 trips/s
+epoch 37: train 0.0633  eval 0.2202  lr 6.25e-05  1652 trips/s
+epoch 38: train 0.0629  eval 0.2193  lr 3.13e-05  1676 trips/s
+epoch 39: train 0.0645  eval 0.2172  lr 3.13e-05  1646 trips/s
+  new best (eval 0.2172) -> checkpoints/after/best.pt
+epoch 40: train 0.0641  eval 0.2167  lr 3.13e-05  1670 trips/s
+  new best (eval 0.2167) -> checkpoints/after/best.pt
+epoch 41: train 0.0633  eval 0.2173  lr 3.13e-05  1654 trips/s
+epoch 42: train 0.0628  eval 0.2176  lr 3.13e-05  1658 trips/s
+epoch 43: train 0.0624  eval 0.2170  lr 3.13e-05  1624 trips/s
+epoch 44: train 0.0618  eval 0.2170  lr 1.56e-05  1660 trips/s
+epoch 45: train 0.0627  eval 0.2181  lr 1.56e-05  1665 trips/s
+epoch 46: train 0.0622  eval 0.2183  lr 1.56e-05  1653 trips/s
+epoch 47: train 0.0618  eval 0.2185  lr 1.56e-05  1637 trips/s
+epoch 48: train 0.0614  eval 0.2183  lr 7.81e-06  1633 trips/s
+epoch 49: train 0.0615  eval 0.2169  lr 7.81e-06  1648 trips/s
+early stop: no eval improvement in 8 epochs (best 0.2167)

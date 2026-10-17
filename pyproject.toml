@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Modern PyTorch 2 revival of DeepTTE (AAAI 2018 travel-time estimation)"
 requires-python = ">=3.11"
 dependencies = [
-    "torch>=2.3",
+    "torch>=2.14",
     "numpy>=1.26",
     "tqdm>=4.66",
     "fastapi>=0.111",
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "httpx>=0.27"]
+dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.12"]
 
 [build-system]
 requires = ["hatchling"]
@@ -20,3 +20,20 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["deeptte"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+# CPU wheels on Linux/Windows (no CUDA download); macOS keeps PyPI wheels with MPS.
+torch = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+ignore = ["E741"]

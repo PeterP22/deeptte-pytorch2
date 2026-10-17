@@ -82,6 +82,7 @@ def test_rate_limit(tmp_path, monkeypatch):
     monkeypatch.setenv("DEEPTTE_RATE_LIMIT", "3")
     monkeypatch.setenv("DEEPTTE_DATASET", "chengdu")
     import importlib
+
     import deeptte.serve as serve
     importlib.reload(serve)  # RATE_LIMIT is read at import time
     limited = TestClient(serve.create_app())

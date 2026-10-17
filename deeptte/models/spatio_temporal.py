@@ -67,11 +67,16 @@ class SpatioTemporal(nn.Module):
         # conv with kernel k shrinks each trip by k-1 windows
         lens = [l - self.kernel_size + 1 for l in traj["lens"]]
 
-        packed_inputs = nn.utils.rnn.pack_padded_sequence(
-            conv_locs, lens, batch_first=True, enforce_sorted=False
+        # Run the LSTM on the padded batch (oneDNN fused kernel on CPU) instead of a
+        # PackedSequence. The LSTM is causal, so valid steps are unaffected by
+        # trailing padding; zero the padded steps to match pad_packed_sequence.
+        out_lens = torch.as_tensor(lens)
+        hiddens, _ = self.rnn(conv_locs)
+        valid = torch.arange(hiddens.size(1))[None, :] < out_lens[:, None]
+        hiddens = hiddens * valid.unsqueeze(-1).to(device=hiddens.device, dtype=hiddens.dtype)
+        packed_hiddens = nn.utils.rnn.pack_padded_sequence(
+            hiddens, lens, batch_first=True, enforce_sorted=False
         )
-        packed_hiddens, _ = self.rnn(packed_inputs)
-        hiddens, out_lens = nn.utils.rnn.pad_packed_sequence(packed_hiddens, batch_first=True)
 
         if self.pooling_method == "mean":
             return packed_hiddens, lens, self.mean_pooling(hiddens, out_lens)
