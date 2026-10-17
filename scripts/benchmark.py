@@ -80,9 +80,14 @@ def main() -> None:
         amp = "bf16" if "bf16" in mode else "none"
         fused = "fused" in mode
         comp = "compile" in mode
-        tr = [train_throughput(train, cfg, amp, fused, comp, args.warmup)
-              for _ in range(args.repeats)]
-        inf = [infer_throughput(test, cfg, amp, comp) for _ in range(args.repeats)]
+        try:
+            tr = [train_throughput(train, cfg, amp, fused, comp, args.warmup)
+                  for _ in range(args.repeats)]
+            inf = [infer_throughput(test, cfg, amp, comp) for _ in range(args.repeats)]
+        except RuntimeError as error:  # e.g. no bf16 LSTM primitive on this CPU
+            results[mode] = {"error": str(error).splitlines()[0][:200]}
+            print(args.label, mode, results[mode], flush=True)
+            continue
         results[mode] = {"train_trips_per_s": round(statistics.median(tr), 1),
                          "infer_trips_per_s": round(statistics.median(inf), 1)}
         print(args.label, mode, results[mode], flush=True)

@@ -44,6 +44,7 @@ jobs:
           uv run python scripts/benchmark.py --label after \
             --out out/speed-after.json --modes fp32,fused,bf16,fused+compile
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: speed
           path: out/
@@ -92,8 +93,10 @@ jobs:
           uv run python -m deeptte.evaluate --checkpoint out/best-${{ matrix.name }}.pt \
             --device cpu --json-out out/eval-${{ matrix.name }}.json
           uv run python -m deeptte.evaluate --checkpoint out/best-${{ matrix.name }}.pt \
-            --device cpu --amp bf16 --json-out out/eval-${{ matrix.name }}-bf16.json
+            --device cpu --amp bf16 --json-out out/eval-${{ matrix.name }}-bf16.json \
+            || echo "bf16 LSTM unsupported on this CPU" | tee out/eval-${{ matrix.name }}-bf16.txt
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: train-${{ matrix.name }}
           path: out/
