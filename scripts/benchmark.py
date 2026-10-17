@@ -13,6 +13,7 @@ from pathlib import Path
 
 import torch
 
+import deeptte
 from deeptte.config import Config
 from deeptte.data import get_loader
 from deeptte.models.net import DeepTTE
@@ -93,7 +94,7 @@ def main() -> None:
         print(args.label, mode, results[mode], flush=True)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps({
-        "label": args.label, "torch": torch.__version__, "threads": torch.get_num_threads(),
+        "label": args.label, "code": deeptte.__file__, "torch": torch.__version__, "threads": torch.get_num_threads(),
         "cpu": platform.processor() or platform.machine(), "repeats": args.repeats,
         "train_trips_measured": sum(len(t["lens"]) for _, t in train[args.warmup:]),
         "test_trips": sum(len(t["lens"]) for _, t in test), "results": results,

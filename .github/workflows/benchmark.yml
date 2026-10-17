@@ -36,7 +36,6 @@ jobs:
       - run: lscpu | grep -E "Model name|^CPU\(s\)"
       - name: before
         run: |
-          PYTHONPATH=/tmp/before uv run python -c "import deeptte; print(deeptte.__file__)"
           PYTHONPATH=/tmp/before uv run python scripts/benchmark.py --label before \
             --out out/speed-before.json --modes fp32,bf16
       - name: after
