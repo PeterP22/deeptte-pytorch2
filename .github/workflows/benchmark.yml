@@ -1,0 +1,99 @@
+name: benchmark
+
+# CPU-only before/after benchmark: same runner, same torch, same data.
+# "before" is the pre-upgrade code at e6395f5, imported via PYTHONPATH.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/benchmark.yml"
+      - "scripts/benchmark.py"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  BEFORE_SHA: e6395f5
+  TQDM_DISABLE: "1"
+
+jobs:
+  speed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked
+      - run: git worktree add /tmp/before "$BEFORE_SHA"
+      - run: lscpu | grep -E "Model name|^CPU\(s\)"
+      - name: before
+        run: |
+          PYTHONPATH=/tmp/before uv run python -c "import deeptte; print(deeptte.__file__)"
+          PYTHONPATH=/tmp/before uv run python scripts/benchmark.py --label before \
+            --out out/speed-before.json --modes fp32,bf16
+      - name: after
+        run: |
+          uv run python scripts/benchmark.py --label after \
+            --out out/speed-after.json --modes fp32,fused,bf16,fused+compile
+      - uses: actions/upload-artifact@v4
+        with:
+          name: speed
+          path: out/
+
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: before
+            workdir: /tmp/before
+            flags: ""
+          - name: after
+            workdir: ""
+            flags: ""
+          - name: after-masked
+            workdir: ""
+            flags: "--masked-attention"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked
+      - run: git worktree add /tmp/before "$BEFORE_SHA"
+      - name: train (seed 42, early stopping, max 60 epochs, CPU)
+        run: |
+          WD="${{ matrix.workdir }}"; WD="${WD:-$GITHUB_WORKSPACE}"; OUT="$GITHUB_WORKSPACE/out"
+          mkdir -p "$OUT" && cd "$WD"
+          # python -m puts the working directory first on sys.path, so this imports $WD's code
+          uv run --project "$GITHUB_WORKSPACE" python -c "import deeptte; print(deeptte.__file__)"
+          start=$(date +%s)
+          uv run --project "$GITHUB_WORKSPACE" python -m deeptte.train --epochs 60 --device cpu \
+            --run-name ${{ matrix.name }} ${{ matrix.flags }} | tee "$OUT/train-${{ matrix.name }}.log"
+          echo $(( $(date +%s) - start )) > "$OUT/train-seconds-${{ matrix.name }}.txt"
+          uv run --project "$GITHUB_WORKSPACE" python -m deeptte.evaluate --device cpu \
+            --checkpoint checkpoints/${{ matrix.name }}/best.pt | tee "$OUT/eval-own-code-${{ matrix.name }}.log"
+          cp checkpoints/${{ matrix.name }}/metrics.csv "$OUT/metrics-${{ matrix.name }}.csv"
+          cp checkpoints/${{ matrix.name }}/best.pt "$OUT/best-${{ matrix.name }}.pt"
+      - name: evaluate (shared harness, fp32 and bf16)
+        run: |
+          uv run python -m deeptte.evaluate --checkpoint out/best-${{ matrix.name }}.pt \
+            --device cpu --json-out out/eval-${{ matrix.name }}.json
+          uv run python -m deeptte.evaluate --checkpoint out/best-${{ matrix.name }}.pt \
+            --device cpu --amp bf16 --json-out out/eval-${{ matrix.name }}-bf16.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: train-${{ matrix.name }}
+          path: out/

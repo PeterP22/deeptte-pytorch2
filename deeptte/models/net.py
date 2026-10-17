@@ -39,7 +39,7 @@ class EntireEstimator(nn.Module):
 
     def eval_on_batch(self, pred, label, mean, std):
         label = label.view(-1, 1) * std + mean
-        pred = pred * std + mean
+        pred = pred.float() * std + mean  # unnormalize in fp32 even under bf16 autocast
         loss = torch.abs(pred - label) / label
         return {"label": label, "pred": pred}, loss.mean()
 
@@ -63,7 +63,7 @@ class LocalEstimator(nn.Module):
             label, lens, batch_first=True, enforce_sorted=False
         ).data
         label = label.view(-1, 1) * std + mean
-        pred = pred * std + mean
+        pred = pred.float() * std + mean
         # EPS in the denominator only (original behavior — preserve exactly)
         loss = torch.abs(pred - label) / (label + EPS)
         return loss.mean()
@@ -140,6 +140,15 @@ class DeepTTE(nn.Module):
             local_out, local_length, local_label, mean, std
         )
         return pred_dict, (1 - self.alpha) * entire_loss + self.alpha * local_loss
+
+    def compile_heads(self) -> None:
+        """torch.compile the fixed-shape MLP heads in place (state_dict keys unchanged).
+
+        The recurrent core sees a new sequence length almost every batch, so compiling
+        it recompiles constantly; see the README.
+        """
+        self.entire_estimate.compile(dynamic=True)
+        self.local_estimate.compile(dynamic=True)
 
     def save_checkpoint(self, path):
         torch.save({"hparams": self.hparams, "state_dict": self.state_dict()}, path)

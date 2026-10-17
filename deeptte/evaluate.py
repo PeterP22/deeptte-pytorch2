@@ -12,7 +12,7 @@ import torch
 from .config import Config
 from .data import get_loader
 from .models.net import DeepTTE
-from .train import pick_device, to_device
+from .train import autocast, pick_device, to_device
 
 
 def metrics(pred, label):
@@ -37,7 +37,7 @@ def load_trips(config, files):
     return trips
 
 
-def baselines(config):
+def baselines(config) -> dict[str, dict[str, float]]:
     """Two sanity baselines the model must beat."""
     train = load_trips(config, config.train_files)
     test = load_trips(config, config.test_files)
@@ -50,19 +50,23 @@ def baselines(config):
     v = sum(t["dist"] for t in train) / sum(t["time"] for t in train)
     speed_pred = np.array([t["dist"] / v for t in test])
 
-    report("baseline: mean time", metrics(mean_pred, label))
-    report("baseline: const speed", metrics(speed_pred, label))
+    out = {"mean_time": metrics(mean_pred, label), "const_speed": metrics(speed_pred, label)}
+    report("baseline: mean time", out["mean_time"])
+    report("baseline: const speed", out["const_speed"])
+    return out
 
 
-def main():
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", default="checkpoints/best.pt")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--dataset", default="chengdu")
+    parser.add_argument("--amp", choices=["none", "bf16"], default="none")
+    parser.add_argument("--json-out", default=None, help="write metrics as JSON")
     parser.add_argument("--results-file", default=None,
                         help="default: results/<dataset>-predictions.txt")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.results_file is None:
         args.results_file = f"results/{args.dataset}-predictions.txt"
 
@@ -72,22 +76,29 @@ def main():
     model.eval()
 
     preds, labels = [], []
-    with torch.no_grad():
+    with torch.inference_mode(), autocast(device, args.amp):
         for name in config.test_files:
             loader = get_loader(Path(config.data_dir) / name, args.batch_size, config)
             for attr, traj in loader:
                 attr, traj = to_device(attr, traj, device)
                 pred_dict, _ = model.eval_on_batch(attr, traj, config)
-                preds += pred_dict["pred"].cpu().squeeze(1).tolist()
-                labels += pred_dict["label"].cpu().squeeze(1).tolist()
+                preds += pred_dict["pred"].float().cpu().squeeze(1).tolist()
+                labels += pred_dict["label"].float().cpu().squeeze(1).tolist()
 
     Path(args.results_file).parent.mkdir(exist_ok=True)
     with open(args.results_file, "w") as f:
         for l, p in zip(labels, preds):
             f.write(f"{l:.1f} {p:.1f}\n")
 
-    baselines(config)
-    report("DeepTTE", metrics(preds, labels))
+    base = baselines(config)
+    model_metrics = metrics(preds, labels)
+    report("DeepTTE", model_metrics)
+    if args.json_out:
+        Path(args.json_out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.json_out).write_text(json.dumps({
+            "checkpoint": args.checkpoint, "amp": args.amp, "torch": torch.__version__,
+            "test_trips": len(labels), "deeptte": model_metrics, "baselines": base,
+        }, indent=2) + "\n")
     print(f"\nper-trip predictions -> {args.results_file}")
 
 
