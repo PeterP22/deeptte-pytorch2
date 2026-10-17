@@ -1,0 +1,5 @@
+   baseline: mean time: MAPE  46.23%   MAE   526.0s (8.77 min)   RMSE   647.1s (10.78 min)
+ baseline: const speed: MAPE  30.69%   MAE   414.3s (6.90 min)   RMSE   557.8s (9.30 min)
+               DeepTTE: MAPE  24.11%   MAE   345.9s (5.77 min)   RMSE   457.8s (7.63 min)
+
+per-trip predictions -> results/chengdu-predictions.txt

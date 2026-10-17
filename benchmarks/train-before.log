@@ -1,0 +1,84 @@
+run before: training on cpu
+epoch 1: train 0.3420  eval 0.5498  lr 1.00e-03
+  new best (eval 0.5498) -> checkpoints/before/best.pt
+epoch 2: train 0.2874  eval 0.5055  lr 1.00e-03
+  new best (eval 0.5055) -> checkpoints/before/best.pt
+epoch 3: train 0.2860  eval 0.3755  lr 1.00e-03
+  new best (eval 0.3755) -> checkpoints/before/best.pt
+epoch 4: train 0.2604  eval 0.3700  lr 1.00e-03
+  new best (eval 0.3700) -> checkpoints/before/best.pt
+epoch 5: train 0.2187  eval 0.3652  lr 1.00e-03
+  new best (eval 0.3652) -> checkpoints/before/best.pt
+epoch 6: train 0.2187  eval 0.4063  lr 1.00e-03
+epoch 7: train 0.2137  eval 0.3979  lr 1.00e-03
+epoch 8: train 0.2022  eval 0.4049  lr 1.00e-03
+epoch 9: train 0.1940  eval 0.3694  lr 5.00e-04
+epoch 10: train 0.1864  eval 0.3709  lr 5.00e-04
+epoch 11: train 0.1665  eval 0.3446  lr 5.00e-04
+  new best (eval 0.3446) -> checkpoints/before/best.pt
+epoch 12: train 0.1520  eval 0.2943  lr 5.00e-04
+  new best (eval 0.2943) -> checkpoints/before/best.pt
+epoch 13: train 0.1335  eval 0.2737  lr 5.00e-04
+  new best (eval 0.2737) -> checkpoints/before/best.pt
+epoch 14: train 0.1252  eval 0.2549  lr 5.00e-04
+  new best (eval 0.2549) -> checkpoints/before/best.pt
+epoch 15: train 0.1157  eval 0.2494  lr 5.00e-04
+  new best (eval 0.2494) -> checkpoints/before/best.pt
+epoch 16: train 0.1170  eval 0.2413  lr 5.00e-04
+  new best (eval 0.2413) -> checkpoints/before/best.pt
+epoch 17: train 0.1120  eval 0.2532  lr 5.00e-04
+epoch 18: train 0.1027  eval 0.2291  lr 5.00e-04
+  new best (eval 0.2291) -> checkpoints/before/best.pt
+epoch 19: train 0.0976  eval 0.2278  lr 5.00e-04
+  new best (eval 0.2278) -> checkpoints/before/best.pt
+epoch 20: train 0.0966  eval 0.3181  lr 5.00e-04
+epoch 21: train 0.0949  eval 0.2654  lr 5.00e-04
+epoch 22: train 0.0902  eval 0.2414  lr 5.00e-04
+epoch 23: train 0.0860  eval 0.2272  lr 5.00e-04
+  new best (eval 0.2272) -> checkpoints/before/best.pt
+epoch 24: train 0.0878  eval 0.2484  lr 5.00e-04
+epoch 25: train 0.0849  eval 0.2307  lr 5.00e-04
+epoch 26: train 0.0842  eval 0.2254  lr 5.00e-04
+  new best (eval 0.2254) -> checkpoints/before/best.pt
+epoch 27: train 0.0790  eval 0.2239  lr 5.00e-04
+  new best (eval 0.2239) -> checkpoints/before/best.pt
+epoch 28: train 0.0817  eval 0.2319  lr 5.00e-04
+epoch 29: train 0.0837  eval 0.2447  lr 5.00e-04
+epoch 30: train 0.0820  eval 0.2260  lr 5.00e-04
+epoch 31: train 0.0770  eval 0.2311  lr 2.50e-04
+epoch 32: train 0.0731  eval 0.2247  lr 2.50e-04
+epoch 33: train 0.0686  eval 0.2225  lr 2.50e-04
+  new best (eval 0.2225) -> checkpoints/before/best.pt
+epoch 34: train 0.0702  eval 0.2257  lr 2.50e-04
+epoch 35: train 0.0689  eval 0.2260  lr 2.50e-04
+epoch 36: train 0.0655  eval 0.2269  lr 2.50e-04
+epoch 37: train 0.0693  eval 0.2264  lr 1.25e-04
+epoch 38: train 0.0683  eval 0.2232  lr 1.25e-04
+epoch 39: train 0.0648  eval 0.2218  lr 1.25e-04
+  new best (eval 0.2218) -> checkpoints/before/best.pt
+epoch 40: train 0.0629  eval 0.2202  lr 1.25e-04
+  new best (eval 0.2202) -> checkpoints/before/best.pt
+epoch 41: train 0.0611  eval 0.2206  lr 1.25e-04
+epoch 42: train 0.0602  eval 0.2235  lr 1.25e-04
+epoch 43: train 0.0589  eval 0.2246  lr 1.25e-04
+epoch 44: train 0.0588  eval 0.2249  lr 6.25e-05
+epoch 45: train 0.0610  eval 0.2218  lr 6.25e-05
+epoch 46: train 0.0589  eval 0.2198  lr 6.25e-05
+  new best (eval 0.2198) -> checkpoints/before/best.pt
+epoch 47: train 0.0576  eval 0.2191  lr 6.25e-05
+  new best (eval 0.2191) -> checkpoints/before/best.pt
+epoch 48: train 0.0566  eval 0.2203  lr 6.25e-05
+epoch 49: train 0.0559  eval 0.2221  lr 6.25e-05
+epoch 50: train 0.0557  eval 0.2202  lr 6.25e-05
+epoch 51: train 0.0545  eval 0.2193  lr 3.13e-05
+epoch 52: train 0.0560  eval 0.2204  lr 3.13e-05
+epoch 53: train 0.0557  eval 0.2188  lr 3.13e-05
+  new best (eval 0.2188) -> checkpoints/before/best.pt
+epoch 54: train 0.0550  eval 0.2193  lr 3.13e-05
+epoch 55: train 0.0546  eval 0.2226  lr 3.13e-05
+epoch 56: train 0.0542  eval 0.2210  lr 3.13e-05
+epoch 57: train 0.0539  eval 0.2188  lr 3.13e-05
+  new best (eval 0.2188) -> checkpoints/before/best.pt
+epoch 58: train 0.0535  eval 0.2211  lr 3.13e-05
+epoch 59: train 0.0530  eval 0.2227  lr 3.13e-05
+epoch 60: train 0.0527  eval 0.2198  lr 3.13e-05
